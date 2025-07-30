@@ -1,0 +1,13 @@
+diff --git a/dist/request.js b/dist/request.js
+index f65b4f7e57b61f65da10e2138762a6b7475d6b40..04509a8c82861098cf8d5d9c7e52d8b1efe67d48 100644
+--- a/dist/request.js
++++ b/dist/request.js
+@@ -17,7 +17,7 @@ export function createOAuth2Request(endpoint, body) {
+     request.headers.set("Content-Type", "application/x-www-form-urlencoded");
+     request.headers.set("Accept", "application/json");
+     // Required by GitHub, and probably by others as well
+-    request.headers.set("User-Agent", "arctic");
++    // request.headers.set("User-Agent", "arctic"); BREAKS KEYCLOAK
+     // Required by Reddit
+     request.headers.set("Content-Length", bodyBytes.byteLength.toString());
+     return request;

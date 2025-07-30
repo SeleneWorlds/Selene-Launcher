@@ -1,0 +1,40 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for the main window",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "opener:default",
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [
+        {
+          "path": "$APPDATA/game_client"
+        }
+      ]
+    },
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        {
+          "url": "https://id.twelveiterations.com/realms/Selene/*"
+        }
+      ]
+    },
+    "fs:default",
+    "fs:allow-app-write-recursive",
+    {
+      "identifier": "http:default",
+      "allow": [
+        {
+          "url": "https://**"
+        }
+      ]
+    },
+    "store:default",
+    "clipboard-manager:default",
+    "clipboard-manager:allow-write-text",
+    "dialog:default"
+  ]
+}

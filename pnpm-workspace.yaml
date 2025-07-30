@@ -1,0 +1,2 @@
+patchedDependencies:
+  arctic: patches/arctic.patch
