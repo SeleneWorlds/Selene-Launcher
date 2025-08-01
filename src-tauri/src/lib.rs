@@ -26,7 +26,7 @@ fn extract_zip(zip_path: String, dest_dir: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn launch_game(jre_path: String, classpath: Vec<String>, java_args: Vec<String>, game_args: Vec<String>) -> Result<(), String> {
+fn launch_game(jre_path: String, classpath: Vec<String>, java_args: Vec<String>, game_args: Vec<String>, working_dir: String) -> Result<(), String> {
     use std::process::Command;
     use std::path::{Path};
 
@@ -51,6 +51,7 @@ fn launch_game(jre_path: String, classpath: Vec<String>, java_args: Vec<String>,
     println!("Launching game with args: {}", args.join(" "));
     Command::new(java_cmd)
         .args(&args)
+        .current_dir(working_dir)
         .spawn()
         .map_err(|e| format!("Failed to launch game: {}", e))?;
     Ok(())

@@ -2,6 +2,7 @@ import { storeToRefs } from "pinia";
 import { useSettingsStore } from "./stores/settings";
 import { useVersionStore } from "./stores/version";
 import { appDataDir, join } from "@tauri-apps/api/path";
+import { exists, mkdir } from "@tauri-apps/plugin-fs";
 import { invoke } from "@tauri-apps/api/core";
 
 export interface LaunchOptions {
@@ -23,17 +24,23 @@ export function useGameLauncher() {
       throw new Error(`Version ${version} not found`);
     }
 
-    const gameClientDir = await join(await appDataDir(), "game_client");
+    const baseDir = await appDataDir();
+    const gameClientDir = await join(baseDir, "game_client");
     const classpath = await Promise.all(
       Object.keys(versionInfo.libraries).map((it) => join(gameClientDir, it))
     );
     classpath.push(await join(gameClientDir, versionInfo.fileName));
+    const gameRunDir = await join(baseDir, "game_run");
+    if(!(await exists(gameRunDir))) {
+      await mkdir(gameRunDir);
+    }
 
     await invoke("launch_game", {
       jrePath: jrePath.value,
       classpath,
       javaArgs,
       gameArgs,
+      workingDir: gameRunDir,
     });
   }
 
