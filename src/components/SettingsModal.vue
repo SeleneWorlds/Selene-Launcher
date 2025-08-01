@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from "vue";
+import { ref, watch, onMounted, watchEffect } from "vue";
 import { storeToRefs } from "pinia";
 import { useSettingsStore } from "../stores/settings";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -70,6 +70,12 @@ async function testLaunchGame() {
   if (!latestVersion.value) return;
   await launchGame(latestVersion.value, {});
 }
+
+const isLatestVersionDownloaded = ref(false)
+watchEffect(async () => {
+  if (!latestVersion.value) return;
+  isLatestVersionDownloaded.value = await isDownloaded(latestVersion.value);
+})
 </script>
 
 <template>
@@ -105,7 +111,7 @@ async function testLaunchGame() {
               placeholder="N/A"
             />
             <UButton
-              v-if="latestVersion && !isDownloaded(latestVersion)"
+              v-if="latestVersion && !isLatestVersionDownloaded"
               @click="openDownloadModal"
               color="primary"
               variant="soft"

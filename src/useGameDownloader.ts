@@ -38,10 +38,8 @@ export function useGameDownloader() {
           }))
         : []),
     ];
-    const baseDir = await appDataDir();
-    const gameDir = await join(baseDir, "game_client");
     for (const file of files) {
-      const destPath = await join(gameDir, file.name);
+      const destPath = await join("game_client", file.name);
       if (!(await exists(destPath, { baseDir: BaseDirectory.AppData }))) {
         return false;
       }
