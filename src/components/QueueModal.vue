@@ -204,8 +204,8 @@ watch(
   () => modelValue.value,
   async (visible) => {
     if (visible) {
-      await attemptJoin();
       pollingActive.value = true;
+      await attemptJoin();
     } else {
       pollingActive.value = false;
     }
