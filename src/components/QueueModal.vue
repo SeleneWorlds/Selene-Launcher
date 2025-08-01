@@ -3,6 +3,12 @@ import { ref, watch } from "vue";
 import { useIntervalFn } from "@vueuse/core";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import { useAuthStore } from "../stores/auth";
+import { useVersionStore } from "../stores/version";
+import { storeToRefs } from "pinia";
+import { useGameLauncher } from "../useGameLauncher";
+import { useBundleUpdater } from "../useBundleUpdater";
+import { appDataDir, join } from "@tauri-apps/api/path";
+import { hashStringSHA256 } from "../hashUtil";
 
 const auth = useAuthStore();
 const props = defineProps<{
@@ -24,8 +30,10 @@ const queueStatus = ref<{
 const pollingActive = ref(false);
 const errorMessage = ref<string | null>(null);
 
-import { useBundleUpdater } from "../useBundleUpdater";
 const { checkBundles, downloadBundles } = useBundleUpdater();
+const versionStore = useVersionStore();
+const { latestVersion } = storeToRefs(versionStore);
+const { launchGame } = useGameLauncher();
 
 const bundles = ref<{
   [key: string]: {
@@ -115,8 +123,48 @@ async function acceptBundleDownloads() {
 }
 
 async function finalizeJoin() {
-  console.log('Joining server with bundles', bundles.value);
-  modelValue.value = false;
+  try {
+    if (!props.server) throw new Error('No server selected');
+    if (!latestVersion.value) throw new Error('No game version available');
+
+    // TODO alongside join token, the server should respond with a host (optional) and a port
+    let host = '';
+    let port = '8147';
+    // If the server did not specify a host, we assume it's on the same address
+    if(!host) {
+      try {
+        const url = new URL(props.server.address);
+        host = url.hostname;
+      } catch (e) {
+        throw new Error('Invalid server address');
+      }
+    }
+
+    // Build gameArgs: -h host -p port -b bundleId path (for each bundle)
+    const gameArgs = ['-h', host, '-p', port];
+    const serverHash = await hashStringSHA256(props.server.address);
+    for (const [bundleId, bundle] of Object.entries(bundles.value || {})) {
+      let bundleDir;
+      if (bundle.allow_shared_cache) {
+        bundleDir = await join('client_bundles', 'shared', bundle.hash);
+      } else {
+        bundleDir = await join('client_bundles', serverHash, bundle.hash);
+      }
+      const baseDir = await appDataDir();
+      const bundlePath = await join(baseDir, bundleDir);
+      gameArgs.push('-b', bundleId, bundlePath);
+    }
+
+    await launchGame(latestVersion.value, { gameArgs });
+    modelValue.value = false;
+  } catch (err) {
+    if (err instanceof Error) {
+      errorMessage.value = err.message || String(err);
+    } else {
+      errorMessage.value = String(err);
+    }
+    console.error(err);
+  }
 }
 
 const { pause, resume } = useIntervalFn(attemptJoin, 3000, {
