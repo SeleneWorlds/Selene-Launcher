@@ -7,11 +7,26 @@ import { appDataDir, join } from "@tauri-apps/api/path";
 import { openPath } from "@tauri-apps/plugin-opener";
 import { useVersionStore } from "../stores/version";
 import { useGameDownloader } from "../useGameDownloader";
+import { countGlobalClientBundles, ensureGlobalClientBundlesDir } from '../globalBundlesUtil';
 
 import DownloadGameModal from "./DownloadGameModal.vue";
 
 const { isDownloaded } = useGameDownloader();
 const showDownloadModal = ref(false);
+const globalBundleCount = ref<number>(0);
+
+async function refreshGlobalBundleCount() {
+  globalBundleCount.value = await countGlobalClientBundles();
+}
+
+async function openGlobalBundles() {
+  const dir = await ensureGlobalClientBundlesDir();
+  await openPath(dir);
+}
+
+onMounted(() => {
+  refreshGlobalBundleCount();
+});
 
 function openDownloadModal() {
   showDownloadModal.value = true;
@@ -60,15 +75,6 @@ async function openGameFiles() {
   const baseDir = await appDataDir();
   const gameDir = await join(baseDir, "game_client");
   await openPath(gameDir);
-}
-
-import { useGameLauncher } from "../useGameLauncher";
-
-const { launchGame } = useGameLauncher();
-
-async function testLaunchGame() {
-  if (!latestVersion.value) return;
-  await launchGame(latestVersion.value, {});
 }
 
 const isLatestVersionDownloaded = ref(false)
@@ -124,14 +130,13 @@ watchEffect(async () => {
               variant="soft"
               icon="i-lucide-folder"
             />
-            <UButton
-              @click="testLaunchGame"
-              color="primary"
-              variant="soft"
-              icon="i-lucide-play"
-            />
           </div>
         </UFormField>
+
+        <div class="flex items-center gap-2 mb-4">
+          <UButton @click="openGlobalBundles" icon="i-lucide-folder" color="primary" variant="soft" />
+          <span>{{ globalBundleCount }} global client bundles</span>
+        </div>
       </div>
 
       <DownloadGameModal

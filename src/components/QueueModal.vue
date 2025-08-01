@@ -9,6 +9,8 @@ import { useGameLauncher } from "../useGameLauncher";
 import { useBundleUpdater } from "../useBundleUpdater";
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { hashStringSHA256 } from "../hashUtil";
+import { ensureGlobalClientBundlesDir } from "../globalBundlesUtil";
+import { readDir } from "@tauri-apps/plugin-fs";
 
 const auth = useAuthStore();
 const props = defineProps<{
@@ -153,6 +155,14 @@ async function finalizeJoin() {
       const baseDir = await appDataDir();
       const bundlePath = await join(baseDir, bundleDir);
       gameArgs.push('-b', bundleId, bundlePath);
+    }
+
+    // Always include global client bundles in -b args
+    const globalBundlesDir = await ensureGlobalClientBundlesDir();
+    const bundleEntries = await readDir(globalBundlesDir);
+    for (const entry of bundleEntries) {
+      if (entry.name.startsWith('.')) continue;
+      gameArgs.push('-b', entry.name, `${globalBundlesDir}/${entry.name}`);
     }
 
     await launchGame(latestVersion.value, { gameArgs });

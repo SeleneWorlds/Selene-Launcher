@@ -11,6 +11,9 @@
       "allow": [
         {
           "path": "$APPDATA/game_client"
+        },
+        {
+          "path": "$APPDATA/global_client_bundles"
         }
       ]
     },
