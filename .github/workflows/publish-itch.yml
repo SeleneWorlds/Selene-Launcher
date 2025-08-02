@@ -60,13 +60,6 @@ jobs:
         # If you don't have `beforeBuildCommand` configured you may want to build your frontend here too.
         run: pnpm install # change this to npm or pnpm depending on which one you use.
 
-      - name: Install butler
-        run: |
-          curl -L -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive.zip
-          unzip butler.zip
-          chmod +x butler
-          sudo mv butler /usr/local/bin/
-
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -75,29 +68,80 @@ jobs:
         with:
           args: ${{ matrix.args }}
 
+      - name: Upload Linux artifacts
+        if: matrix.platform == 'linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-artifacts
+          path: |
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/rpm/*.rpm
+            src-tauri/target/release/bundle/appimage/*.AppImage
+
+      - name: Upload Windows artifacts
+        if: matrix.platform == 'windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-artifacts
+          path: src-tauri/target/release/bundle/msi/*.msi
+
+      - name: Upload macOS artifacts
+        if: matrix.platform == 'macos'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-artifacts
+          path: |
+            src-tauri/target/release/bundle/dmg/*.dmg
+            src-tauri/target/release/bundle/app/*.app
+
+  publish-to-itch:
+    name: Publish Artifacts to itch.io
+    needs: build
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-artifacts
+          path: linux-artifacts
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-artifacts
+          path: windows-artifacts
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-artifacts
+          path: macos-artifacts
+
+      - name: Install butler
+        run: |
+          curl -L -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive.zip
+          unzip butler.zip
+          chmod +x butler
+          sudo mv butler /usr/local/bin/
+
       - name: Publish Linux builds
         run: |
-          butler push "src-tauri/target/release/bundle/deb/*.deb" "blaytheninth/selene:linux-deb" --userversion "$GITHUB_REF_NAME"
-          butler push "src-tauri/target/release/bundle/rpm/*.rpm" "blaytheninth/selene:linux-rpm" --userversion "$GITHUB_REF_NAME"
-          butler push "src-tauri/target/release/bundle/appimage/*.AppImage" "blaytheninth/selene:linux-appimage" --userversion "$GITHUB_REF_NAME"
+          butler push "linux-artifacts/*.deb" "blaytheninth/selene:linux-deb" --userversion "$GITHUB_REF_NAME"
+          butler push "linux-artifacts/*.rpm" "blaytheninth/selene:linux-rpm" --userversion "$GITHUB_REF_NAME"
+          butler push "linux-artifacts/*.AppImage" "blaytheninth/selene:linux-appimage" --userversion "$GITHUB_REF_NAME"
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-        if: matrix.platform == 'linux'
 
       - name: Publish Windows build
-        run: butler push "src-tauri/target/release/bundle/msi/*.msi" "blaytheninth/selene:windows" --userversion "$GITHUB_REF_NAME"
+        run: butler push "windows-artifacts/*.msi" "blaytheninth/selene:windows" --userversion "$GITHUB_REF_NAME"
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-        if: matrix.platform == 'windows'
 
       - name: Publish macOS builds
         run: |
-          butler push "src-tauri/target/release/bundle/dmg/*_aarch64.dmg" "blaytheninth/selene:macos-dmg-aarch64" --userversion "$GITHUB_REF_NAME"
-          butler push "src-tauri/target/release/bundle/dmg/*_x64.dmg" "blaytheninth/selene:macos-dmg-x64" --userversion "$GITHUB_REF_NAME"
-          butler push "src-tauri/target/release/bundle/app/*_aarch64.app" "blaytheninth/selene:macos-app-aarch64" --userversion "$GITHUB_REF_NAME"
-          butler push "src-tauri/target/release/bundle/app/*_x64.app" "blaytheninth/selene:macos-app-x64" --userversion "$GITHUB_REF_NAME"
+          butler push "macos-artifacts/*_aarch64.dmg" "blaytheninth/selene:macos-dmg-aarch64" --userversion "$GITHUB_REF_NAME"
+          butler push "macos-artifacts/*_x64.dmg" "blaytheninth/selene:macos-dmg-x64" --userversion "$GITHUB_REF_NAME"
+          butler push "macos-artifacts/*_aarch64.app" "blaytheninth/selene:macos-app-aarch64" --userversion "$GITHUB_REF_NAME"
+          butler push "macos-artifacts/*_x64.app" "blaytheninth/selene:macos-app-x64" --userversion "$GITHUB_REF_NAME"
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-        if: matrix.platform == 'macos-latest'
-
-      
