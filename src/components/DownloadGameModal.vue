@@ -11,7 +11,6 @@ const emit = defineEmits(['close']);
 const {
   startDownload,
   progress: downloadProgress,
-  isDownloading,
   error: downloadError,
   isComplete: downloadComplete,
   reset: resetDownloader

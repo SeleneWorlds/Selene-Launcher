@@ -69,10 +69,6 @@ async function pickJrePath() {
   }
 }
 
-function closeModal() {
-  modelValue.value = false;
-}
-
 async function openGameFiles() {
   const baseDir = await appDataDir();
   const gameDir = await join(baseDir, "game_client");
