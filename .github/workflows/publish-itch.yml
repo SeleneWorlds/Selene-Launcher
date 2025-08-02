@@ -91,8 +91,10 @@ jobs:
         with:
           name: macos-artifacts
           path: |
-            src-tauri/target/release/bundle/dmg/*.dmg
-            src-tauri/target/release/bundle/app/*.app
+            src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
+            src-tauri/target/x86_64-apple-darwin/release/bundle/app/*.app.tar.gz
+            src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+            src-tauri/target/aarch64-apple-darwin/release/bundle/app/*.app.tar.gz
 
   publish-to-itch:
     name: Publish Artifacts to itch.io
