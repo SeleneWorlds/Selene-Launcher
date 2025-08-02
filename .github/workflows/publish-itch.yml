@@ -157,10 +157,10 @@ jobs:
 
       - name: Publish Windows builds
         run: |
-          for file in windows-artifacts/*.msi; do
+          for file in windows-artifacts/msi/*.msi; do
             [ -e "$file" ] && butler push "$file" "blaytheninth/selene:windows-msi" --userversion "$GITHUB_REF_NAME" || echo "No .msi files to upload."
           done
-          for file in windows-artifacts/*.exe; do
+          for file in windows-artifacts/nsis/*.exe; do
             [ -e "$file" ] && butler push "$file" "blaytheninth/selene:windows-exe" --userversion "$GITHUB_REF_NAME" || echo "No .exe files to upload."
           done
         env:
