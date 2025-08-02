@@ -7,10 +7,13 @@ import { useVersionStore } from "../stores/version";
 import { storeToRefs } from "pinia";
 import { useGameLauncher } from "../useGameLauncher";
 import { useBundleUpdater } from "../useBundleUpdater";
+import { useGameDownloader } from "../useGameDownloader";
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { hashStringSHA256 } from "../hashUtil";
 import { ensureGlobalClientBundlesDir } from "../globalBundlesUtil";
 import { readDir } from "@tauri-apps/plugin-fs";
+
+import DownloadGameModal from "./DownloadGameModal.vue";
 
 const auth = useAuthStore();
 const props = defineProps<{
@@ -36,6 +39,9 @@ const { checkBundles, downloadBundles } = useBundleUpdater();
 const versionStore = useVersionStore();
 const { latestVersion } = storeToRefs(versionStore);
 const { launchGame } = useGameLauncher();
+const { isDownloaded } = useGameDownloader();
+
+const showDownloadModal = ref(false);
 
 const bundles = ref<{
   [key: string]: {
@@ -128,6 +134,27 @@ async function finalizeJoin() {
   try {
     if (!props.server) throw new Error('No server selected');
     if (!latestVersion.value) throw new Error('No game version available');
+
+    // Ensure latest version is downloaded before launching
+    let downloaded = await isDownloaded(latestVersion.value);
+    if (!downloaded) {
+      showDownloadModal.value = true;
+      // Wait for download to complete
+      while (!downloaded) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        downloaded = await isDownloaded(latestVersion.value);
+        if (!showDownloadModal.value) {
+          // Abort if the user closed the modal
+          break;
+        }
+      }
+      showDownloadModal.value = false;
+      // If still not downloaded, abort
+      if (!downloaded) {
+        errorMessage.value = 'Unable to launch. Game client download aborted or unsuccessful.';
+        return;
+      }
+    }
 
     // TODO alongside join token, the server should respond with a host (optional) and a port
     let host = '';
@@ -277,4 +304,10 @@ watch(
       </div>
     </template>
   </UModal>
+
+  <DownloadGameModal
+    v-if="latestVersion"
+    v-model:open="showDownloadModal"
+    :version="latestVersion"
+  />
 </template>
