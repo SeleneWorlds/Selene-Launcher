@@ -9,75 +9,56 @@ on:
 jobs:
   build:
     name: Build Tauri app (${{ matrix.platform }})
-    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            platform: linux
-          - os: windows-latest
-            platform: windows
-          - os: macos-latest
-            platform: macos
+          - os: 'macos-latest'
+            platform: 'macos' # for Arm based macs (M1 and above).
+            args: '--target aarch64-apple-darwin'
+          - os: 'macos-latest' # for Intel based macs.
+            platform: 'macos'
+            args: '--target x86_64-apple-darwin'
+          - os: 'ubuntu-22.04'
+            platform: 'linux'
+            args: ''
+          - os: 'windows-latest'
+            platform: 'windows'
+            args: ''
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Install dependencies (Linux only)
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: lts/*
+          cache: 'pnpm' # Set this to npm, yarn or pnpm.
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v3
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable # Set this to dtolnay/rust-toolchain@nightly
         with:
-          version: 8
+          # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows and linux builds.
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Setup Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
 
       - name: Install frontend dependencies
-        run: pnpm install
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-
-      - name: Install Tauri CLI
-        run: pnpm add -g @tauri-apps/cli
-
-      - name: Build Tauri app
-        run: pnpm tauri build
-        env:
-          TAURI_PLATFORM: ${{ matrix.platform }}
-
-      - name: Find build artifact
-        id: artifact
-        shell: bash
-        run: |
-          set -e
-          if [[ "${{ matrix.platform }}" == "linux" ]]; then
-            FILE=$(find src-tauri/target/release/bundle/appimage -name '*.AppImage' | head -n 1)
-          elif [[ "${{ matrix.platform }}" == "windows" ]]; then
-            FILE=$(find src-tauri/target/release/bundle/msi -name '*.msi' | head -n 1)
-          elif [[ "${{ matrix.platform }}" == "macos" ]]; then
-            FILE=$(find src-tauri/target/release/bundle/dmg -name '*.dmg' | head -n 1)
-          fi
-          echo "artifact=$FILE" >> $GITHUB_OUTPUT
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.platform }}-build
-          path: ${{ steps.artifact.outputs.artifact }}
-
-  publish:
-    name: Publish to itch.io
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download all build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: dist
+        # If you don't have `beforeBuildCommand` configured you may want to build your frontend here too.
+        run: pnpm install # change this to npm or pnpm depending on which one you use.
 
       - name: Install butler
         run: |
@@ -86,17 +67,37 @@ jobs:
           chmod +x butler
           sudo mv butler /usr/local/bin/
 
-      - name: Publish Linux build
-        run: butler push "dist/linux-build/" "blaytheninth/selene:linux" --userversion "$GITHUB_REF_NAME"
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          NUXT_UI_PRO_LICENSE: ${{ secrets.NUXT_UI_PRO_LICENSE }}
+        with:
+          args: ${{ matrix.args }}
+
+      - name: Publish Linux builds
+        run: |
+          butler push "src-tauri/target/release/bundle/deb/*.deb" "blaytheninth/selene:linux-deb" --userversion "$GITHUB_REF_NAME"
+          butler push "src-tauri/target/release/bundle/rpm/*.rpm" "blaytheninth/selene:linux-rpm" --userversion "$GITHUB_REF_NAME"
+          butler push "src-tauri/target/release/bundle/appimage/*.AppImage" "blaytheninth/selene:linux-appimage" --userversion "$GITHUB_REF_NAME"
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        if: matrix.platform == 'linux'
 
       - name: Publish Windows build
-        run: butler push "dist/windows-build/" "blaytheninth/selene:windows" --userversion "$GITHUB_REF_NAME"
+        run: butler push "src-tauri/target/release/bundle/msi/*.msi" "blaytheninth/selene:windows" --userversion "$GITHUB_REF_NAME"
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        if: matrix.platform == 'windows'
 
-      - name: Publish macOS build
-        run: butler push "dist/macos-build/" "blaytheninth/selene:mac" --userversion "$GITHUB_REF_NAME"
+      - name: Publish macOS builds
+        run: |
+          butler push "src-tauri/target/release/bundle/dmg/*_aarch64.dmg" "blaytheninth/selene:macos-dmg-aarch64" --userversion "$GITHUB_REF_NAME"
+          butler push "src-tauri/target/release/bundle/dmg/*_x64.dmg" "blaytheninth/selene:macos-dmg-x64" --userversion "$GITHUB_REF_NAME"
+          butler push "src-tauri/target/release/bundle/app/*_aarch64.app" "blaytheninth/selene:macos-app-aarch64" --userversion "$GITHUB_REF_NAME"
+          butler push "src-tauri/target/release/bundle/app/*_x64.app" "blaytheninth/selene:macos-app-x64" --userversion "$GITHUB_REF_NAME"
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        if: matrix.platform == 'macos-latest'
+
+      

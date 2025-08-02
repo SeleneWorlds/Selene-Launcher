@@ -1,10 +1,10 @@
-name: 'Publish Launcher'
+name: 'Publish GitHub Release'
 
 on:
   workflow_dispatch:
   push:
-    branches: [ "main" ]
-    tags: [ 'v*.*.*' ]
+    tags:
+      - 'v*.*.*'
 
 jobs:
   publish-tauri:
