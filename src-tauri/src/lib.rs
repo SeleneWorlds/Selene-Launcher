@@ -57,6 +57,66 @@ fn launch_game(jre_path: String, classpath: Vec<String>, java_args: Vec<String>,
     Ok(())
 }
 
+#[tauri::command]
+fn find_java_path() -> Option<String> {
+    use std::env;
+    use std::process::Command;
+    use std::path::Path;
+    #[cfg(target_os = "windows")]
+    let is_windows = true;
+    #[cfg(not(target_os = "windows"))]
+    let is_windows = false;
+
+    // 1. JAVA_HOME
+    if let Ok(java_home) = env::var("JAVA_HOME") {
+        let java_path = if is_windows {
+            Path::new(&java_home).join("bin/java.exe")
+        } else {
+            Path::new(&java_home).join("bin/java")
+        };
+        if java_path.exists() {
+            let output = if is_windows {
+                Command::new("cmd").args(["/C", &format!("\"{}\" -version", java_path.display())]).output()
+            } else {
+                Command::new(java_path.to_str().unwrap()).arg("-version").output()
+            };
+            if let Ok(output) = output {
+                if output.status.success() {
+                    return Some(java_path.to_string_lossy().to_string());
+                }
+            }
+        }
+    }
+
+    // 2. PATH
+    let which_cmd = if is_windows { "where" } else { "which" };
+    let java_cmd = if is_windows { "java.exe" } else { "java" };
+    let output = if is_windows {
+        Command::new("cmd").args(["/C", which_cmd, java_cmd]).output()
+    } else {
+        Command::new(which_cmd).arg(java_cmd).output()
+    };
+    if let Ok(output) = output {
+        if output.status.success() {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let java_path = stdout.lines().next().unwrap_or("");
+            if !java_path.is_empty() {
+                let version_output = if is_windows {
+                    Command::new("cmd").args(["/C", &format!("\"{}\" -version", java_path)]).output()
+                } else {
+                    Command::new(java_path).arg("-version").output()
+                };
+                if let Ok(vo) = version_output {
+                    if vo.status.success() {
+                        return Some(java_path.to_string());
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let mut builder = tauri::Builder::default()
@@ -87,7 +147,11 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_http::init())
-        .invoke_handler(tauri::generate_handler![extract_zip, launch_game,])
+        .invoke_handler(tauri::generate_handler![
+            extract_zip,
+            launch_game,
+            find_java_path,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

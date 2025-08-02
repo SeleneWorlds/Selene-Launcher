@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
+import { invoke } from "@tauri-apps/api/core";
 import { load } from '@tauri-apps/plugin-store';
 
 export type ReleaseChannel = 'stable' | 'experimental';
@@ -19,6 +20,11 @@ export const useSettingsStore = defineStore('settings', () => {
     const storedJrePath = await persistentStore.get<string>('jrePath');
     if (typeof storedJrePath === 'string') {
       jrePath.value = storedJrePath;
+    }
+
+    if (!jrePath.value) {
+      const javaPath = await invoke<string | null>('find_java_path');
+      if (javaPath) jrePath.value = javaPath;
     }
   }
 
