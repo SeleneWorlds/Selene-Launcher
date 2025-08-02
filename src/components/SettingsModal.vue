@@ -1,19 +1,13 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, watchEffect, useTemplateRef } from "vue";
+import { ref, watch, onMounted, useTemplateRef } from "vue";
 import { storeToRefs } from "pinia";
 import { useSettingsStore } from "../stores/settings";
 import { open } from "@tauri-apps/plugin-dialog";
-import { appDataDir, join } from "@tauri-apps/api/path";
 import { openPath } from "@tauri-apps/plugin-opener";
-import { useVersionStore } from "../stores/version";
-import { useGameDownloader } from "../useGameDownloader";
 import { countGlobalClientBundles, ensureGlobalClientBundlesDir } from '../globalBundlesUtil';
 
-import DownloadGameModal from "./DownloadGameModal.vue";
 import DownloadJreModal from "./DownloadJreModal.vue";
 
-const { isDownloaded } = useGameDownloader();
-const showDownloadModal = ref(false);
 const jreDownloadModal = useTemplateRef('jreDownloadModal');
 const globalBundleCount = ref<number>(0);
 
@@ -30,13 +24,6 @@ onMounted(() => {
   refreshGlobalBundleCount();
 });
 
-function openDownloadModal() {
-  showDownloadModal.value = true;
-}
-function closeDownloadModal() {
-  showDownloadModal.value = false;
-}
-
 const modelValue = defineModel<boolean>();
 const settings = useSettingsStore();
 const { releaseChannel, jrePath } = storeToRefs(settings);
@@ -46,12 +33,8 @@ const releaseChannelOptions = [
   { label: "Experimental", value: "experimental" },
 ];
 
-const versionStore = useVersionStore();
-const { latestVersion } = storeToRefs(versionStore);
-
 onMounted(async () => {
   await settings.loadSettings();
-  await versionStore.fetchLatestVersion(releaseChannel.value);
 });
 
 watch([releaseChannel, jrePath], async () => {
@@ -68,18 +51,6 @@ async function pickJrePath() {
     jrePath.value = result;
   }
 }
-
-async function openGameFiles() {
-  const baseDir = await appDataDir();
-  const gameDir = await join(baseDir, "game_client");
-  await openPath(gameDir);
-}
-
-const isLatestVersionDownloaded = ref(false)
-watchEffect(async () => {
-  if (!latestVersion.value) return;
-  isLatestVersionDownloaded.value = await isDownloaded(latestVersion.value);
-})
 </script>
 
 <template>
@@ -109,30 +80,6 @@ watchEffect(async () => {
             <UButton v-if="!jrePath" @click="() => jreDownloadModal?.open()" color="primary" variant="soft" icon="i-lucide-download" />
           </div>
         </UFormField>
-        <UFormField label="Client Version">
-          <div class="flex items-center">
-            <UInput
-              :value="latestVersion"
-              variant="ghost"
-              readonly
-              placeholder="N/A"
-            />
-            <UButton
-              v-if="latestVersion && !isLatestVersionDownloaded"
-              @click="openDownloadModal"
-              color="primary"
-              variant="soft"
-              icon="i-lucide-download"
-            />
-            <UButton
-              v-else
-              @click="openGameFiles"
-              color="primary"
-              variant="soft"
-              icon="i-lucide-folder"
-            />
-          </div>
-        </UFormField>
 
         <div class="flex items-center gap-2 mb-4">
           <UButton @click="openGlobalBundles" icon="i-lucide-folder" color="primary" variant="soft" />
@@ -140,12 +87,6 @@ watchEffect(async () => {
         </div>
       </div>
 
-      <DownloadGameModal
-        v-if="latestVersion"
-        :open="showDownloadModal"
-        :version="latestVersion"
-        @close="closeDownloadModal"
-      />
       <DownloadJreModal ref="jreDownloadModal" />
     </template>
   </UModal>
