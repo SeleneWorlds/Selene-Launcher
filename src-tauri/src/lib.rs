@@ -1,3 +1,34 @@
+fn resolve_java_bin(jre_path: &str) -> String {
+    use std::path::Path;
+    let path = Path::new(jre_path);
+    let last = path.file_name().and_then(|n| n.to_str());
+    let java_name = if cfg!(windows) { "java.exe" } else { "java" };
+    if last == Some("bin") {
+        path.join(java_name).to_string_lossy().to_string()
+    } else if last == Some("java") || last == Some("java.exe") {
+        path.to_string_lossy().to_string()
+    } else {
+        path.join("bin").join(java_name).to_string_lossy().to_string()
+    }
+}
+
+#[tauri::command]
+async fn is_valid_java_path(jre_path: String) -> Result<bool, String> {
+    use std::path::Path;
+    use std::process::Command;
+    let java_bin = resolve_java_bin(&jre_path);
+    if !Path::new(&java_bin).exists() {
+        return Ok(false);
+    }
+    let output = Command::new(&java_bin)
+        .arg("-version")
+        .output();
+    match output {
+        Ok(out) => Ok(out.status.success()),
+        Err(_) => Ok(false),
+    }
+}
+
 #[tauri::command]
 async fn extract_file(file_path: String, dest_dir: String) -> Result<String, String> {
     // Use extract_zip or extract_tar based on file extension
@@ -123,22 +154,13 @@ fn launch_game(
     game_args: Vec<String>,
     working_dir: String,
 ) -> Result<(), String> {
-    use std::path::Path;
     use std::process::Command;
 
     // Determine the java command path
     let java_cmd = if jre_path.trim().is_empty() {
         "java".to_string()
     } else {
-        let path = Path::new(&jre_path);
-        let last = path.file_name().and_then(|n| n.to_str());
-        if last == Some("bin") {
-            path.join("java").to_string_lossy().to_string()
-        } else if last == Some("java") || last == Some("java.exe") {
-            path.to_string_lossy().to_string()
-        } else {
-            path.join("bin/java").to_string_lossy().to_string()
-        }
+        resolve_java_bin(&jre_path)
     };
 
     let mut args = java_args;
@@ -167,24 +189,20 @@ fn find_java_path() -> Option<String> {
 
     // 1. JAVA_HOME
     if let Ok(java_home) = env::var("JAVA_HOME") {
-        let java_path = if is_windows {
-            Path::new(&java_home).join("bin/java.exe")
-        } else {
-            Path::new(&java_home).join("bin/java")
-        };
-        if java_path.exists() {
+        let java_path = resolve_java_bin(&java_home);
+        if Path::new(&java_path).exists() {
             let output = if is_windows {
                 Command::new("cmd")
-                    .args(["/C", &format!("\"{}\" -version", java_path.display())])
+                    .args(["/C", &format!("\"{}\" -version", java_path)])
                     .output()
             } else {
-                Command::new(java_path.to_str().unwrap())
+                Command::new(&java_path)
                     .arg("-version")
                     .output()
             };
             if let Ok(output) = output {
                 if output.status.success() {
-                    return Some(java_path.to_string_lossy().to_string());
+                    return Some(java_path);
                 }
             }
         }
@@ -260,6 +278,7 @@ pub fn run() {
             extract_zip,
             extract_tar,
             launch_game,
+            is_valid_java_path,
             find_java_path,
         ])
         .run(tauri::generate_context!())
