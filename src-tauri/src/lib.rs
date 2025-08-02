@@ -26,9 +26,15 @@ fn extract_zip(zip_path: String, dest_dir: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn launch_game(jre_path: String, classpath: Vec<String>, java_args: Vec<String>, game_args: Vec<String>, working_dir: String) -> Result<(), String> {
+fn launch_game(
+    jre_path: String,
+    classpath: Vec<String>,
+    java_args: Vec<String>,
+    game_args: Vec<String>,
+    working_dir: String,
+) -> Result<(), String> {
+    use std::path::Path;
     use std::process::Command;
-    use std::path::{Path};
 
     // Determine the java command path
     let java_cmd = if jre_path.trim().is_empty() {
@@ -62,8 +68,8 @@ fn launch_game(jre_path: String, classpath: Vec<String>, java_args: Vec<String>,
 #[tauri::command]
 fn find_java_path() -> Option<String> {
     use std::env;
-    use std::process::Command;
     use std::path::Path;
+    use std::process::Command;
     #[cfg(target_os = "windows")]
     let is_windows = true;
     #[cfg(not(target_os = "windows"))]
@@ -78,9 +84,13 @@ fn find_java_path() -> Option<String> {
         };
         if java_path.exists() {
             let output = if is_windows {
-                Command::new("cmd").args(["/C", &format!("\"{}\" -version", java_path.display())]).output()
+                Command::new("cmd")
+                    .args(["/C", &format!("\"{}\" -version", java_path.display())])
+                    .output()
             } else {
-                Command::new(java_path.to_str().unwrap()).arg("-version").output()
+                Command::new(java_path.to_str().unwrap())
+                    .arg("-version")
+                    .output()
             };
             if let Ok(output) = output {
                 if output.status.success() {
@@ -94,7 +104,9 @@ fn find_java_path() -> Option<String> {
     let which_cmd = if is_windows { "where" } else { "which" };
     let java_cmd = if is_windows { "java.exe" } else { "java" };
     let output = if is_windows {
-        Command::new("cmd").args(["/C", which_cmd, java_cmd]).output()
+        Command::new("cmd")
+            .args(["/C", which_cmd, java_cmd])
+            .output()
     } else {
         Command::new(which_cmd).arg(java_cmd).output()
     };
@@ -104,7 +116,9 @@ fn find_java_path() -> Option<String> {
             let java_path = stdout.lines().next().unwrap_or("");
             if !java_path.is_empty() {
                 let version_output = if is_windows {
-                    Command::new("cmd").args(["/C", &format!("\"{}\" -version", java_path)]).output()
+                    Command::new("cmd")
+                        .args(["/C", &format!("\"{}\" -version", java_path)])
+                        .output()
                 } else {
                     Command::new(java_path).arg("-version").output()
                 };
@@ -122,6 +136,7 @@ fn find_java_path() -> Option<String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let mut builder = tauri::Builder::default()
+        .plugin(tauri_plugin_upload::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
