@@ -14,10 +14,10 @@ jobs:
       matrix:
         include:
           - os: 'macos-latest'
-            platform: 'macos' # for Arm based macs (M1 and above).
+            platform: 'macos-aarch64' # for Arm based macs (M1 and above).
             args: '--target aarch64-apple-darwin'
           - os: 'macos-latest' # for Intel based macs.
-            platform: 'macos'
+            platform: 'macos-x86_64'
             args: '--target x86_64-apple-darwin'
           - os: 'ubuntu-22.04'
             platform: 'linux'
@@ -30,8 +30,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install dependencies (Linux only)
-        if: matrix.platform == 'linux'
+      - name: Install dependencies (Ubuntu only)
+        if: matrix.os == 'ubuntu-22.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
@@ -49,7 +49,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable # Set this to dtolnay/rust-toolchain@nightly
         with:
           # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows and linux builds.
-          targets: ${{ matrix.platform == 'macos' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Setup Rust cache
         uses: swatinem/rust-cache@v2
@@ -85,14 +85,21 @@ jobs:
           name: windows-artifacts
           path: src-tauri/target/release/bundle/msi/*.msi
 
-      - name: Upload macOS artifacts
-        if: matrix.platform == 'macos'
+      - name: Upload macOS x86_64 artifacts
+        if: matrix.platform == 'macos-x86_64'
         uses: actions/upload-artifact@v4
         with:
-          name: macos-artifacts
+          name: macos-x86_64-artifacts
           path: |
             src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
             src-tauri/target/x86_64-apple-darwin/release/bundle/app/*.app.tar.gz
+
+      - name: Upload macOS aarch64 artifacts
+        if: matrix.platform == 'macos-aarch64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-aarch64-artifacts
+          path: |
             src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
             src-tauri/target/aarch64-apple-darwin/release/bundle/app/*.app.tar.gz
 
@@ -113,11 +120,17 @@ jobs:
           name: windows-artifacts
           path: windows-artifacts
 
-      - name: Download macOS artifacts
+      - name: Download macOS x86_64 artifacts
         uses: actions/download-artifact@v4
         with:
-          name: macos-artifacts
-          path: macos-artifacts
+          name: macos-x86_64-artifacts
+          path: macos-x86_64-artifacts
+
+      - name: Download macOS aarch64 artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-aarch64-artifacts
+          path: macos-aarch64-artifacts
 
       - name: Install butler
         run: |
@@ -150,17 +163,17 @@ jobs:
 
       - name: Publish macOS builds
         run: |
-          for file in macos-artifacts/*_aarch64.dmg; do
-            [ -e "$file" ] && butler push "$file" "blaytheninth/selene:macos-dmg-aarch64" --userversion "$GITHUB_REF_NAME" || echo "No *_aarch64.dmg files to upload."
-          done
-          for file in macos-artifacts/*_x64.dmg; do
+          for file in macos-x86_64-artifacts/*_x64.dmg; do
             [ -e "$file" ] && butler push "$file" "blaytheninth/selene:macos-dmg-x64" --userversion "$GITHUB_REF_NAME" || echo "No *_x64.dmg files to upload."
           done
-          for file in macos-artifacts/*_aarch64.app; do
-            [ -e "$file" ] && butler push "$file" "blaytheninth/selene:macos-app-aarch64" --userversion "$GITHUB_REF_NAME" || echo "No *_aarch64.app files to upload."
+          for file in macos-aarch64-artifacts/*_aarch64.dmg; do
+            [ -e "$file" ] && butler push "$file" "blaytheninth/selene:macos-dmg-aarch64" --userversion "$GITHUB_REF_NAME" || echo "No *_aarch64.dmg files to upload."
           done
-          for file in macos-artifacts/*_x64.app; do
+          for file in macos-x86_64-artifacts/*_x64.app; do
             [ -e "$file" ] && butler push "$file" "blaytheninth/selene:macos-app-x64" --userversion "$GITHUB_REF_NAME" || echo "No *_x64.app files to upload."
+          done
+          for file in macos-aarch64-artifacts/*_aarch64.app; do
+            [ -e "$file" ] && butler push "$file" "blaytheninth/selene:macos-app-aarch64" --userversion "$GITHUB_REF_NAME" || echo "No *_aarch64.app files to upload."
           done
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
