@@ -27,6 +27,8 @@ reqwest = { version = "0.11", features = ["blocking"] }
 serde-xml-rs = "0.6"
 serde_json = "1"
 zip = "4.0.0"
+tar = "0.4.44"
+flate2 = "1.1.2"
 tauri-plugin-deep-link = "2"
 tauri-plugin-store = "2"
 open = "5.3.2"

@@ -1,17 +1,37 @@
 #[tauri::command]
-fn extract_zip(zip_path: String, dest_dir: String) -> Result<(), String> {
+async fn extract_file(file_path: String, dest_dir: String) -> Result<String, String> {
+    // Use extract_zip or extract_tar based on file extension
+    let file_extension = file_path.split('.').last().unwrap_or_default();
+    match file_extension {
+        "zip" => extract_zip(file_path, dest_dir).await,
+        "gz" => extract_tar(file_path, dest_dir).await,
+        "tar" => extract_tar(file_path, dest_dir).await,
+        _ => Err(format!("Unsupported file extension: {}", file_extension)),
+    }    
+}
+
+#[tauri::command]
+async fn extract_zip(zip_path: String, dest_dir: String) -> Result<String, String> {
     use std::fs::{create_dir_all, File};
     use std::io::BufReader;
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
     use zip::ZipArchive;
+    use std::collections::HashSet;
 
     let file = File::open(&zip_path).map_err(|e| e.to_string())?;
     let mut archive = ZipArchive::new(BufReader::new(file)).map_err(|e| e.to_string())?;
     create_dir_all(&dest_dir).map_err(|e| e.to_string())?;
 
+    let mut root_entries: HashSet<PathBuf> = HashSet::new();
+
     for i in 0..archive.len() {
         let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
         let outpath = Path::new(&dest_dir).join(file.name());
+        if let Some(first) = Path::new(file.name()).components().next() {
+            let mut root = PathBuf::new();
+            root.push(first);
+            root_entries.insert(root);
+        }
         if file.is_dir() {
             create_dir_all(&outpath).map_err(|e| e.to_string())?;
         } else {
@@ -22,7 +42,77 @@ fn extract_zip(zip_path: String, dest_dir: String) -> Result<(), String> {
             std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
         }
     }
-    Ok(())
+    // Return the root folder if exactly one, otherwise dest_dir
+    if root_entries.len() == 1 {
+        if let Some(root) = root_entries.iter().next() {
+            Ok(root.to_string_lossy().to_string())
+        } else {
+            Ok(dest_dir.to_string())
+        }
+    } else {
+        Ok(dest_dir.to_string())
+    }
+}
+
+#[tauri::command]
+async fn extract_tar(tar_path: String, dest_dir: String) -> Result<String, String> {
+    use std::fs::{create_dir_all, File};
+    use std::io::BufReader;
+    use std::path::{Path, PathBuf};
+    use tar::Archive;
+    use flate2::read::GzDecoder;
+    use std::collections::HashSet;
+
+    let tar_path = Path::new(&tar_path);
+    let dest_dir = Path::new(&dest_dir);
+    create_dir_all(&dest_dir).map_err(|e| e.to_string())?;
+
+    let file = File::open(&tar_path).map_err(|e| e.to_string())?;
+    let ext = tar_path.extension().and_then(|s| s.to_str()).unwrap_or("");
+    let mut root_entries: HashSet<PathBuf> = HashSet::new();
+
+    if ext == "gz" {
+        // .tar.gz
+        let decompressor = GzDecoder::new(BufReader::new(file));
+        let mut archive = Archive::new(decompressor);
+        for entry in archive.entries().map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            if let Ok(path) = entry.path() {
+                if let Some(first) = path.components().next() {
+                    let mut root = PathBuf::new();
+                    root.push(first);
+                    root_entries.insert(root);
+                }
+            }
+        }
+        // Actually extract
+        let file = File::open(&tar_path).map_err(|e| e.to_string())?;
+        let decompressor = GzDecoder::new(BufReader::new(file));
+        let mut archive = Archive::new(decompressor);
+        archive.unpack(&dest_dir).map_err(|e| e.to_string())?;
+    } else {
+        // .tar
+        let mut archive = Archive::new(BufReader::new(file));
+        for entry in archive.entries().map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            if let Ok(path) = entry.path() {
+                if let Some(first) = path.components().next() {
+                    let mut root = PathBuf::new();
+                    root.push(first);
+                    root_entries.insert(root);
+                }
+            }
+        }
+        // Actually extract
+        let file = File::open(&tar_path).map_err(|e| e.to_string())?;
+        let mut archive = Archive::new(BufReader::new(file));
+        archive.unpack(&dest_dir).map_err(|e| e.to_string())?;
+    }
+    if let Some(root) = root_entries.iter().next() {
+        Ok(root.to_string_lossy().to_string())
+    } else {
+        Ok(String::from(""))
+    }
 }
 
 #[tauri::command]
@@ -166,7 +256,9 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_http::init())
         .invoke_handler(tauri::generate_handler![
+            extract_file,
             extract_zip,
+            extract_tar,
             launch_game,
             find_java_path,
         ])

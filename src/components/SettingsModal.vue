@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, watchEffect } from "vue";
+import { ref, watch, onMounted, watchEffect, useTemplateRef } from "vue";
 import { storeToRefs } from "pinia";
 import { useSettingsStore } from "../stores/settings";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -10,9 +10,11 @@ import { useGameDownloader } from "../useGameDownloader";
 import { countGlobalClientBundles, ensureGlobalClientBundlesDir } from '../globalBundlesUtil';
 
 import DownloadGameModal from "./DownloadGameModal.vue";
+import DownloadJreModal from "./DownloadJreModal.vue";
 
 const { isDownloaded } = useGameDownloader();
 const showDownloadModal = ref(false);
+const jreDownloadModal = useTemplateRef('jreDownloadModal');
 const globalBundleCount = ref<number>(0);
 
 async function refreshGlobalBundleCount() {
@@ -99,14 +101,17 @@ watchEffect(async () => {
           label="JRE Path"
           help="Select the root directory of your Java installation."
         >
-          <UInput
-            v-model="jrePath"
-            placeholder="Path to Java directory"
-            class="flex-1"
-          />
-          <UButton @click="pickJrePath" color="primary" variant="soft"
-            >Browse</UButton
-          >
+          <div class="flex gap-2">
+            <UInput
+              v-model="jrePath"
+              placeholder="Path to Java directory"
+              class="flex-1"
+            />
+            <UButton @click="pickJrePath" color="primary" variant="soft">
+              Browse
+            </UButton>
+            <UButton v-if="!jrePath" @click="() => jreDownloadModal?.open()" color="primary" variant="soft" icon="i-lucide-download" />
+          </div>
         </UFormField>
         <UFormField label="Client Version">
           <div class="flex items-center">
@@ -145,9 +150,7 @@ watchEffect(async () => {
         :version="latestVersion"
         @close="closeDownloadModal"
       />
-    </template>
-    <template #footer>
-      <UButton color="primary" block @click="closeModal">Close</UButton>
+      <DownloadJreModal ref="jreDownloadModal" />
     </template>
   </UModal>
 </template>
