@@ -168,7 +168,7 @@ fn launch_game(
     args.push(classpath.join(":"));
     args.push("world.selene.client.ClientBootstrapKt".to_string());
     args.extend(game_args);
-    println!("Launching game with args: {}", args.join(" "));
+    println!("Launching game with Java {} and args: {}", java_cmd, args.join(" "));
     Command::new(java_cmd)
         .args(&args)
         .current_dir(working_dir)

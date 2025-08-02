@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, useTemplateRef } from "vue";
 import { useIntervalFn } from "@vueuse/core";
+import { invoke } from "@tauri-apps/api/core";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import { useAuthStore } from "../stores/auth";
 import { useVersionStore } from "../stores/version";
+import { useSettingsStore } from "../stores/settings";
 import { storeToRefs } from "pinia";
 import { useGameLauncher } from "../useGameLauncher";
 import { useBundleUpdater } from "../useBundleUpdater";
@@ -14,6 +16,7 @@ import { ensureGlobalClientBundlesDir } from "../globalBundlesUtil";
 import { readDir } from "@tauri-apps/plugin-fs";
 
 import DownloadGameModal from "./DownloadGameModal.vue";
+import DownloadJreModal from "./DownloadJreModal.vue";
 
 const auth = useAuthStore();
 const props = defineProps<{
@@ -42,6 +45,7 @@ const { launchGame } = useGameLauncher();
 const { isDownloaded } = useGameDownloader();
 
 const showDownloadModal = ref(false);
+const jreDownloadModal = useTemplateRef('jreDownloadModal');
 
 const bundles = ref<{
   [key: string]: {
@@ -154,6 +158,23 @@ async function finalizeJoin() {
         errorMessage.value = 'Unable to launch. Game client download aborted or unsuccessful.';
         return;
       }
+    }
+
+    // Ensure valid JRE before launching
+    const settings = useSettingsStore();
+    let validJava = await invoke<boolean>('is_valid_java_path', { jrePath: settings.jrePath });
+    if (!validJava) {
+      await new Promise((resolve) => {
+        jreDownloadModal.value?.open();
+        // Poll for valid java after modal opens
+        const interval = setInterval(async () => {
+          validJava = await invoke<boolean>('is_valid_java_path', { jrePath: settings.jrePath });
+          if (validJava) {
+            clearInterval(interval);
+            resolve(true);
+          }
+        }, 500);
+      });
     }
 
     // TODO alongside join token, the server should respond with a host (optional) and a port
@@ -310,4 +331,5 @@ watch(
     v-model:open="showDownloadModal"
     :version="latestVersion"
   />
+  <DownloadJreModal ref="jreDownloadModal" />
 </template>

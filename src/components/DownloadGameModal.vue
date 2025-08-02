@@ -84,9 +84,6 @@ function closeModal() {
       </div>
     </template>
     <template #footer>
-      <UButton color="primary" block @click="closeModal" :disabled="isDownloading">
-        Close
-      </UButton>
       <div v-if="downloadError" class="mt-2 text-xs text-error">
         {{ downloadError }}
       </div>
