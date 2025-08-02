@@ -1,0 +1,102 @@
+name: Build and Publish to itch.io
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    name: Build Tauri app (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+          - os: windows-latest
+            platform: windows
+          - os: macos-latest
+            platform: macos
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
+      - name: Install frontend dependencies
+        run: pnpm install
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Install Tauri CLI
+        run: pnpm add -g @tauri-apps/cli
+
+      - name: Build Tauri app
+        run: pnpm tauri build
+        env:
+          TAURI_PLATFORM: ${{ matrix.platform }}
+
+      - name: Find build artifact
+        id: artifact
+        shell: bash
+        run: |
+          set -e
+          if [[ "${{ matrix.platform }}" == "linux" ]]; then
+            FILE=$(find src-tauri/target/release/bundle/appimage -name '*.AppImage' | head -n 1)
+          elif [[ "${{ matrix.platform }}" == "windows" ]]; then
+            FILE=$(find src-tauri/target/release/bundle/msi -name '*.msi' | head -n 1)
+          elif [[ "${{ matrix.platform }}" == "macos" ]]; then
+            FILE=$(find src-tauri/target/release/bundle/dmg -name '*.dmg' | head -n 1)
+          fi
+          echo "artifact=$FILE" >> $GITHUB_OUTPUT
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-build
+          path: ${{ steps.artifact.outputs.artifact }}
+
+  publish:
+    name: Publish to itch.io
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Install butler
+        run: |
+          curl -L -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive.zip
+          unzip butler.zip
+          chmod +x butler
+          sudo mv butler /usr/local/bin/
+
+      - name: Publish Linux build
+        run: butler push "dist/linux-build/" "blaytheninth/selene:linux" --userversion "$GITHUB_REF_NAME"
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+
+      - name: Publish Windows build
+        run: butler push "dist/windows-build/" "blaytheninth/selene:windows" --userversion "$GITHUB_REF_NAME"
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+
+      - name: Publish macOS build
+        run: butler push "dist/macos-build/" "blaytheninth/selene:mac" --userversion "$GITHUB_REF_NAME"
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
