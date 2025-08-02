@@ -8,23 +8,11 @@ import { countGlobalClientBundles, ensureGlobalClientBundlesDir } from '../globa
 
 import DownloadJreModal from "./DownloadJreModal.vue";
 
+const modelValue = defineModel<boolean>();
 const jreDownloadModal = useTemplateRef('jreDownloadModal');
+
 const globalBundleCount = ref<number>(0);
 
-async function refreshGlobalBundleCount() {
-  globalBundleCount.value = await countGlobalClientBundles();
-}
-
-async function openGlobalBundles() {
-  const dir = await ensureGlobalClientBundlesDir();
-  await openPath(dir);
-}
-
-onMounted(() => {
-  refreshGlobalBundleCount();
-});
-
-const modelValue = defineModel<boolean>();
 const settings = useSettingsStore();
 const { releaseChannel, jrePath } = storeToRefs(settings);
 
@@ -35,6 +23,7 @@ const releaseChannelOptions = [
 
 onMounted(async () => {
   await settings.loadSettings();
+  globalBundleCount.value = await countGlobalClientBundles();
 });
 
 watch([releaseChannel, jrePath], async () => {
@@ -50,6 +39,11 @@ async function pickJrePath() {
   if (typeof result === "string") {
     jrePath.value = result;
   }
+}
+
+async function openGlobalBundles() {
+  const dir = await ensureGlobalClientBundlesDir();
+  await openPath(dir);
 }
 </script>
 
