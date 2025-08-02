@@ -126,22 +126,39 @@ jobs:
 
       - name: Publish Linux builds
         run: |
-          butler push "linux-artifacts/*.deb" "blaytheninth/selene:linux-deb" --userversion "$GITHUB_REF_NAME"
-          butler push "linux-artifacts/*.rpm" "blaytheninth/selene:linux-rpm" --userversion "$GITHUB_REF_NAME"
-          butler push "linux-artifacts/*.AppImage" "blaytheninth/selene:linux-appimage" --userversion "$GITHUB_REF_NAME"
+          for file in linux-artifacts/*.deb; do
+            [ -e "$file" ] && butler push "$file" "blaytheninth/selene:linux-deb" --userversion "$GITHUB_REF_NAME" || echo "No .deb files to upload."
+          done
+          for file in linux-artifacts/*.rpm; do
+            [ -e "$file" ] && butler push "$file" "blaytheninth/selene:linux-rpm" --userversion "$GITHUB_REF_NAME" || echo "No .rpm files to upload."
+          done
+          for file in linux-artifacts/*.AppImage; do
+            [ -e "$file" ] && butler push "$file" "blaytheninth/selene:linux-appimage" --userversion "$GITHUB_REF_NAME" || echo "No .AppImage files to upload."
+          done
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
 
       - name: Publish Windows build
-        run: butler push "windows-artifacts/*.msi" "blaytheninth/selene:windows" --userversion "$GITHUB_REF_NAME"
+        run: |
+          for file in windows-artifacts/*.msi; do
+            [ -e "$file" ] && butler push "$file" "blaytheninth/selene:windows" --userversion "$GITHUB_REF_NAME" || echo "No .msi files to upload."
+          done
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
 
       - name: Publish macOS builds
         run: |
-          butler push "macos-artifacts/*_aarch64.dmg" "blaytheninth/selene:macos-dmg-aarch64" --userversion "$GITHUB_REF_NAME"
-          butler push "macos-artifacts/*_x64.dmg" "blaytheninth/selene:macos-dmg-x64" --userversion "$GITHUB_REF_NAME"
-          butler push "macos-artifacts/*_aarch64.app" "blaytheninth/selene:macos-app-aarch64" --userversion "$GITHUB_REF_NAME"
-          butler push "macos-artifacts/*_x64.app" "blaytheninth/selene:macos-app-x64" --userversion "$GITHUB_REF_NAME"
+          for file in macos-artifacts/*_aarch64.dmg; do
+            [ -e "$file" ] && butler push "$file" "blaytheninth/selene:macos-dmg-aarch64" --userversion "$GITHUB_REF_NAME" || echo "No *_aarch64.dmg files to upload."
+          done
+          for file in macos-artifacts/*_x64.dmg; do
+            [ -e "$file" ] && butler push "$file" "blaytheninth/selene:macos-dmg-x64" --userversion "$GITHUB_REF_NAME" || echo "No *_x64.dmg files to upload."
+          done
+          for file in macos-artifacts/*_aarch64.app; do
+            [ -e "$file" ] && butler push "$file" "blaytheninth/selene:macos-app-aarch64" --userversion "$GITHUB_REF_NAME" || echo "No *_aarch64.app files to upload."
+          done
+          for file in macos-artifacts/*_x64.app; do
+            [ -e "$file" ] && butler push "$file" "blaytheninth/selene:macos-app-x64" --userversion "$GITHUB_REF_NAME" || echo "No *_x64.app files to upload."
+          done
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
