@@ -38,6 +38,8 @@ fn launch_game(jre_path: String, classpath: Vec<String>, java_args: Vec<String>,
         let last = path.file_name().and_then(|n| n.to_str());
         if last == Some("bin") {
             path.join("java").to_string_lossy().to_string()
+        } else if last == Some("java") || last == Some("java.exe") {
+            path.to_string_lossy().to_string()
         } else {
             path.join("bin/java").to_string_lossy().to_string()
         }
