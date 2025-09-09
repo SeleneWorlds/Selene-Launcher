@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, useTemplateRef } from "vue";
+import { ref, watch, useTemplateRef, onMounted } from "vue";
 import { useIntervalFn } from "@vueuse/core";
 import { invoke } from "@tauri-apps/api/core";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
@@ -41,6 +41,7 @@ const errorMessage = ref<string | null>(null);
 const { checkBundles, downloadBundles } = useBundleUpdater();
 const versionStore = useVersionStore();
 const { latestVersion } = storeToRefs(versionStore);
+const settings = useSettingsStore();
 const { launchGame } = useGameLauncher();
 const { isDownloaded } = useGameDownloader();
 
@@ -161,7 +162,6 @@ async function finalizeJoin() {
     }
 
     // Ensure valid JRE before launching
-    const settings = useSettingsStore();
     let validJava = await invoke<boolean>('is_valid_java_path', { jrePath: settings.jrePath });
     if (!validJava) {
       await new Promise((resolve) => {
@@ -257,6 +257,10 @@ async function close() {
   }
   modelValue.value = false;
 }
+
+onMounted(async () => {
+  await versionStore.fetchLatestVersion(settings.releaseChannel);
+})
 
 watch(
   () => modelValue.value,
