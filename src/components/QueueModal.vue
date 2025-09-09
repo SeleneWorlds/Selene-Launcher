@@ -24,7 +24,6 @@ const props = defineProps<{
     name: string;
     address: string;
     description: string;
-    image_url: string;
   } | null;
 }>();
 

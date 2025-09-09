@@ -8,23 +8,20 @@ const featuredServer = ref<null | {
   name: string;
   address: string;
   description: string;
-  image_url: string;
 }>(null);
 const localServer = ref({
   name: "Local Server",
   address: "http://localhost:8080",
   description: "Local server for testing",
-  image_url: "https://dev.selene.world/favicon.svg"
 });
 const selectedServer = ref<null | {
   name: string;
   address: string;
   description: string;
-  image_url: string;
 }>(null);
 const showQueueModal = ref(false);
 
-function onJoin(server: { name: string; address: string; description: string; image_url: string }) {
+function onJoin(server: { name: string; address: string; description: string }) {
   selectedServer.value = server;
   showQueueModal.value = true;
 }
@@ -34,7 +31,6 @@ onMounted(async () => {
     name: "Gobaith Test Server",
     address: "https://gobaith.selene.world",
     description: "Oldschool Illarion on Gobaith",
-    image_url: "https://dev.selene.world/favicon.svg"
   }
 });
 </script>
