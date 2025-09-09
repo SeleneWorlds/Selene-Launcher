@@ -2,21 +2,16 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { invoke } from "@tauri-apps/api/core";
 import { load } from '@tauri-apps/plugin-store';
+import { Server } from '../types';
 
 export type ReleaseChannel = 'stable' | 'experimental';
-
-export type ServerInfo = {
-  name: string;
-  address: string;
-  description: string;
-};
 
 const SETTINGS_FILE = 'settings.json';
 
 export const useSettingsStore = defineStore('settings', () => {
   const releaseChannel = ref<ReleaseChannel>('stable');
   const jrePath = ref<string>('');
-  const lastJoinedServer = ref<ServerInfo | null>(null);
+  const lastJoinedServer = ref<Server | null>(null);
 
   async function loadSettings() {
     const persistentStore = await load(SETTINGS_FILE, { autoSave: false });
@@ -29,9 +24,9 @@ export const useSettingsStore = defineStore('settings', () => {
       jrePath.value = storedJrePath;
     }
 
-    const storedLastJoined = await persistentStore.get<ServerInfo>('lastJoinedServer');
+    const storedLastJoined = await persistentStore.get<Server>('lastJoinedServer');
     if (storedLastJoined && typeof storedLastJoined === 'object') {
-      lastJoinedServer.value = storedLastJoined as ServerInfo;
+      lastJoinedServer.value = storedLastJoined as Server;
     }
 
     if (!jrePath.value) {
@@ -48,7 +43,7 @@ export const useSettingsStore = defineStore('settings', () => {
     await persistentStore.save();
   }
 
-  async function setLastJoinedServer(server: ServerInfo | null) {
+  async function setLastJoinedServer(server: Server | null) {
     lastJoinedServer.value = server;
     await saveSettings();
   }

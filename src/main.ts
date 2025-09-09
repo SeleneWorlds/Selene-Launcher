@@ -8,9 +8,13 @@ import { onOpenUrl } from "@tauri-apps/plugin-deep-link";
 
 import App from "./App.vue";
 import HomeView from "./views/HomeView.vue";
+import BrowseView from "./views/BrowseView.vue";
 import { useAuthStore } from "./stores/auth";
 
-const routes = [{ path: "/", component: HomeView }];
+const routes = [
+  { path: "/", component: HomeView },
+  { path: "/browse", component: BrowseView },
+];
 
 const router = createRouter({
   history: createMemoryHistory(),

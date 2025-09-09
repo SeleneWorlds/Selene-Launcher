@@ -17,14 +17,11 @@ import { readDir } from "@tauri-apps/plugin-fs";
 
 import DownloadGameModal from "./DownloadGameModal.vue";
 import DownloadJreModal from "./DownloadJreModal.vue";
+import { Server } from '../types';
 
 const auth = useAuthStore();
 const props = defineProps<{
-  server: {
-    name: string;
-    address: string;
-    description: string;
-  } | null;
+  server: Server | null;
 }>();
 
 const modelValue = defineModel<boolean>();

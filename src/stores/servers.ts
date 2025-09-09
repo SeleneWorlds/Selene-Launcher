@@ -1,16 +1,12 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
+import { Server } from '../types';
 
-export type ServerInfo = {
-  name: string;
-  address: string;
-  description: string;
-};
 
 export const useServersStore = defineStore('servers', () => {
-  const featured = ref<ServerInfo | null>(null);
-  const servers = ref<ServerInfo[]>([]);
+  const featured = ref<Server | null>(null);
+  const servers = ref<Server[]>([]);
   const loadingFeatured = ref(false);
   const loadingServers = ref(false);
   const errorFeatured = ref<string | null>(null);
@@ -28,16 +24,7 @@ export const useServersStore = defineStore('servers', () => {
         featured.value = null;
         return;
       }
-      const data = await res.json();
-      if (data && data.name && data.address) {
-        featured.value = {
-          name: String(data.name),
-          address: String(data.address),
-          description: String(data.description || ''),
-        };
-      } else {
-        featured.value = null;
-      }
+      featured.value = await res.json() as Server;
     } catch (e: any) {
       errorFeatured.value = String(e?.message || e);
       featured.value = null;
@@ -58,18 +45,7 @@ export const useServersStore = defineStore('servers', () => {
         servers.value = [];
         return;
       }
-      const data = await res.json();
-      if (Array.isArray(data.servers)) {
-        servers.value = data.servers
-          .filter((s: any) => s && s.name && s.address)
-          .map((s: any) => ({
-            name: String(s.name),
-            address: String(s.address),
-            description: String(s.description || ''),
-          }));
-      } else {
-        servers.value = [];
-      }
+      servers.value = (await res.json()).servers as Server[];
     } catch (e: any) {
       errorServers.value = String(e?.message || e);
       servers.value = [];

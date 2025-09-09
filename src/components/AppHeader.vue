@@ -13,6 +13,10 @@ const items = computed<NavigationMenuItem[]>(() => [
     to: "/",
   },
   {
+    label: "Browse",
+    to: "/browse",
+  },
+  {
     label: "Discord",
     to: "https://discord.gg/S7maQVRRa9",
   },

@@ -8,8 +8,7 @@ import ServerTicker from "../components/ServerTicker.vue";
 import QueueModal from "../components/QueueModal.vue";
 import { useSettingsStore } from "../stores/settings";
 import { useServersStore } from "../stores/servers";
-
-type Server = { name: string; address: string; description: string };
+import { Server } from '../types';
 
 const settings = useSettingsStore();
 const serversStore = useServersStore();
@@ -19,6 +18,8 @@ const localServer = ref<Server>({
   name: "Local Server",
   address: "http://localhost:8080",
   description: "Local server for testing",
+  currentPlayers: 0,
+  maxPlayers: 0,
 });
 const selectedServer = ref<Server | null>(null);
 const showQueueModal = ref(false);
