@@ -68,7 +68,7 @@ async function attemptJoin() {
   errorMessage.value = null;
   try {
     if (!props.server) throw new Error("No server selected");
-    const res = await tauriFetch(`${props.server.address}/join`, {
+    const res = await tauriFetch(`${props.server.apiUrl}/join`, {
       method: "POST",
       headers: {
         Authorization: "Bearer " + (await auth.accessToken()),
@@ -103,9 +103,9 @@ async function attemptJoin() {
         pollingActive.value = false;
         console.log(
           "[QueueModal] Retrieving bundles for server",
-          props.server.address
+          props.server.apiUrl
         );
-        const bundleResult = (await checkBundles(props.server.address))
+        const bundleResult = (await checkBundles(props.server.apiUrl))
         bundles.value = bundleResult?.bundles ?? {};
         bundlesToUpdate.value = bundleResult?.bundlesToUpdate ?? [];
         showBundlePrompt.value = bundlesToUpdate.value.length > 0;
@@ -125,7 +125,7 @@ async function acceptBundleDownloads() {
   if (!props.server) return;
   bundleDownloadProgress.value = null;
   showBundlePrompt.value = false;
-  await downloadBundles(props.server.address, bundlesToUpdate.value, (msg) => {
+  await downloadBundles(props.server.apiUrl, bundlesToUpdate.value, (msg) => {
     bundleDownloadProgress.value = msg;
   });
   bundlesToUpdate.value.length = 0;
@@ -174,22 +174,9 @@ async function finalizeJoin() {
       });
     }
 
-    // TODO alongside join token, the server should respond with a host (optional) and a port
-    let host = '';
-    let port = '8147';
-    // If the server did not specify a host, we assume it's on the same address
-    if(!host) {
-      try {
-        const url = new URL(props.server.address);
-        host = url.hostname;
-      } catch (e) {
-        throw new Error('Invalid server address');
-      }
-    }
-
     // Build gameArgs: -h host -p port -b bundleId path (for each bundle)
-    const gameArgs = ['-h', host, '-p', port];
-    const serverHash = await hashStringSHA256(props.server.address);
+    const gameArgs = ['-h', props.server.address, '-p', String(props.server.port)];
+    const serverHash = await hashStringSHA256(props.server.apiUrl);
     for (const [bundleId, bundle] of Object.entries(bundles.value || {})) {
       let bundleDir;
       if (bundle.allow_shared_cache) {
@@ -232,9 +219,9 @@ async function close() {
   try {
     if (!props.server) throw new Error("No server selected");
     console.log("[QueueModal] Leaving queue", {
-      url: `${props.server.address}/leave`,
+      url: `${props.server.apiUrl}/leave`,
     });
-    const res = await tauriFetch(`${props.server.address}/leave`, {
+    const res = await tauriFetch(`${props.server.apiUrl}/leave`, {
       method: "POST",
       headers: {
         Authorization: "Bearer " + (await auth.accessToken()),
