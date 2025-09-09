@@ -102,6 +102,7 @@ async function attemptJoin() {
       ) {
         console.log("[QueueModal] Queue status: Accepted");
         auth.updateJoinToken(queueStatus.value.token);
+        settings.setLastJoinedServer(props.server);
         pollingActive.value = false;
         console.log(
           "[QueueModal] Retrieving bundles for server",
