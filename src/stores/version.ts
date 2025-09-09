@@ -4,7 +4,7 @@ import { join } from '@tauri-apps/api/path';
 import { readTextFile, writeTextFile, mkdir, exists, BaseDirectory } from '@tauri-apps/plugin-fs';
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 
-const UPDATE_URL = 'https://update.selene.world/selene-client/{{channel}}/latest.json';
+const UPDATE_URL = 'https://update.seleneworlds.com/selene-client/{{channel}}/latest.json';
 const VERSIONS_DIR = 'versions';
 
 type VersionMetadata = {
