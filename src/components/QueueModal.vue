@@ -175,7 +175,7 @@ async function finalizeJoin() {
     }
 
     // Build gameArgs: -h host -p port -b bundleId path (for each bundle)
-    const gameArgs = ['-h', props.server.address, '-p', String(props.server.port)];
+    const gameArgs = ['-h', props.server.address, '-p', String(props.server.port), '-t', auth.joinToken];
     const serverHash = await hashStringSHA256(props.server.apiUrl);
     for (const [bundleId, bundle] of Object.entries(bundles.value || {})) {
       let bundleDir;
