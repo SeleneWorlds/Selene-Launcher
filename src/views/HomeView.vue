@@ -4,15 +4,17 @@ import { storeToRefs } from "pinia";
 import FeaturedServerCard from "../components/FeaturedServerCard.vue";
 import LastJoinedServerCard from "../components/LastJoinedServerCard.vue";
 import LocalServerCard from "../components/LocalServerCard.vue";
+import ServerTicker from "../components/ServerTicker.vue";
 import QueueModal from "../components/QueueModal.vue";
 import { useSettingsStore } from "../stores/settings";
+import { useServersStore } from "../stores/servers";
 
 type Server = { name: string; address: string; description: string };
 
 const settings = useSettingsStore();
+const serversStore = useServersStore();
 const { lastJoinedServer } = storeToRefs(settings);
-
-const featuredServer = ref<Server | null>(null);
+const { featured: featuredServer, servers } = storeToRefs(serversStore);
 const localServer = ref<Server>({
   name: "Local Server",
   address: "http://localhost:8080",
@@ -28,24 +30,10 @@ function onJoin(server: Server) {
 
 onMounted(async () => {
   await settings.loadSettings();
-
-  try {
-    const res = await fetch("https://telescope.seleneworlds.com/featured", {
-      method: "GET",
-      headers: { "Accept": "application/json" },
-    });
-    if (!res.ok) return;
-    const data = await res.json();
-    if (data && typeof data === "object" && data.name && data.address) {
-      featuredServer.value = {
-        name: String(data.name),
-        address: String(data.address),
-        description: String(data.description || ""),
-      };
-    }
-  } catch (e) {
-    console.error(e);
-  }
+  await Promise.allSettled([
+    serversStore.fetchFeatured(),
+    serversStore.fetchServers(),
+  ]);
 });
 </script>
 
@@ -59,6 +47,12 @@ onMounted(async () => {
   <FeaturedServerCard
     v-if="featuredServer"
     :server="featuredServer"
+    @join="onJoin"
+  />
+
+  <ServerTicker
+    v-if="servers?.length"
+    :servers="servers"
     @join="onJoin"
   />
 
