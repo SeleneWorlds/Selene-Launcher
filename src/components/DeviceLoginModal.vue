@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import { useAuthStore } from "../stores/auth";
 import { writeText as copyToClipboard } from "@tauri-apps/plugin-clipboard-manager";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 const visible = ref(false);
 defineExpose({
@@ -105,7 +106,7 @@ function closeModal() {
       <div v-if="error" class="text-center text-error">{{ error }}</div>
       <div v-else class="text-center">
         <div class="mb-3">Complete sign in on your browser</div>
-        <UButton :to="verificationUriComplete">Open Browser</UButton>
+        <UButton @click="openUrl(verificationUriComplete)">Open Browser</UButton>
         <div class="mt-4">
           <div class="mb-2 text-xs">Or copy and open this link directly</div>
           <UInput
