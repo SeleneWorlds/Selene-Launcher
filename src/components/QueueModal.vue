@@ -18,6 +18,7 @@ import { UnauthorizedError } from "../errors";
 
 import DownloadGameModal from "./DownloadGameModal.vue";
 import DownloadJreModal from "./DownloadJreModal.vue";
+import DeviceLoginModal from "./DeviceLoginModal.vue";
 import { Server } from '../types';
 
 const auth = useAuthStore();
@@ -25,6 +26,8 @@ const auth = useAuthStore();
 function handleError(err: unknown): void {
   if (err instanceof UnauthorizedError) {
     errorMessage.value = "Session expired. Please log in again.";
+    // Start sign in flow for session expiration
+    loginModal.value?.open();
   } else {
     errorMessage.value = "Network error or unexpected error.";
   }
@@ -54,6 +57,7 @@ const { isDownloaded } = useGameDownloader();
 
 const showDownloadModal = ref(false);
 const jreDownloadModal = useTemplateRef('jreDownloadModal');
+const loginModal = useTemplateRef('loginModal');
 
 const bundles = ref<{
   [key: string]: {
@@ -79,6 +83,20 @@ async function attemptJoin() {
   errorMessage.value = null;
   try {
     if (!props.server) throw new Error("No server selected");
+    
+    // Check session validity before attempting to connect
+    try {
+      await auth.accessToken();
+    } catch (err) {
+      if (err instanceof UnauthorizedError) {
+        // Session expired, start sign in flow
+        await close();
+        await loginModal.value?.open();
+        return;
+      }
+      throw err;
+    }
+    
     const res = await tauriFetch(`${props.server.apiUrl}/join`, {
       method: "POST",
       headers: {
@@ -326,4 +344,5 @@ watch(
     :version="latestVersion"
   />
   <DownloadJreModal ref="jreDownloadModal" />
+  <DeviceLoginModal ref="loginModal" />
 </template>
