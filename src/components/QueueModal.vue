@@ -14,12 +14,23 @@ import { appDataDir, join } from "@tauri-apps/api/path";
 import { hashStringSHA256 } from "../hashUtil";
 import { ensureGlobalClientBundlesDir } from "../globalBundlesUtil";
 import { readDir } from "@tauri-apps/plugin-fs";
+import { UnauthorizedError } from "../errors";
 
 import DownloadGameModal from "./DownloadGameModal.vue";
 import DownloadJreModal from "./DownloadJreModal.vue";
 import { Server } from '../types';
 
 const auth = useAuthStore();
+
+function handleError(err: unknown): void {
+  if (err instanceof UnauthorizedError) {
+    errorMessage.value = "Session expired. Please log in again.";
+  } else {
+    errorMessage.value = "Network error or unexpected error.";
+  }
+  pollingActive.value = false;
+  console.error(err);
+}
 const props = defineProps<{
   server: Server | null;
 }>();
@@ -75,9 +86,7 @@ async function attemptJoin() {
       },
     });
     if (res.status === 401) {
-      errorMessage.value = "Session expired, please log in again.";
-      pollingActive.value = false;
-      return;
+      throw new UnauthorizedError();
     }
     if (!res.ok) {
       console.log("[QueueModal] Failed to join queue", {
@@ -115,9 +124,7 @@ async function attemptJoin() {
       }
     }
   } catch (err) {
-    errorMessage.value = "Network error or unexpected error.";
-    pollingActive.value = false;
-    console.error(err);
+    handleError(err);
   }
 }
 
@@ -228,7 +235,7 @@ async function close() {
       },
     });
     if (res.status === 401) {
-      errorMessage.value = "Session expired, please log in again.";
+      throw new UnauthorizedError();
     } else if (!res.ok) {
       console.log(
         `[QueueModal] Failed to leave queue: ${res.status} ${res.statusText}`
@@ -236,8 +243,7 @@ async function close() {
       console.log(`Failed to leave queue: ${res.status} ${res.statusText}`);
     }
   } catch (err) {
-    console.error(err);
-    errorMessage.value = "Network error or unexpected error.";
+    handleError(err);
   }
   modelValue.value = false;
 }

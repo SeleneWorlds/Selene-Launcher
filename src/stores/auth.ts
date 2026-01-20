@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { reactive, computed } from "vue";
 import * as arctic from "arctic";
 import { load } from "@tauri-apps/plugin-store";
+import { UnauthorizedError } from "../errors";
 
 export const useAuthStore = defineStore("auth", () => {
   const session = reactive<{
@@ -110,7 +111,7 @@ export const useAuthStore = defineStore("auth", () => {
 
   async function accessToken() {
     if (session.accessToken === "") {
-      throw new Error("Not signed in");
+      throw new UnauthorizedError();
     }
 
     const now = new Date();
