@@ -11,7 +11,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@nuxt/ui-pro": "^3.1.2",
+    "@nuxt/ui": "^4.3.0",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-clipboard-manager": "~2",
     "@tauri-apps/plugin-deep-link": "~2",
@@ -27,6 +27,7 @@
     "@vueuse/core": "^13.2.0",
     "arctic": "^3.7.0",
     "pinia": "^3.0.2",
+    "tailwindcss": "^4.1.18",
     "vue": "^3.5.13",
     "vue-router": "^4.5.1"
   },
