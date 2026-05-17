@@ -23,15 +23,15 @@ tauri-plugin-opener = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-http = "2"
 serde = { version = "1", features = ["derive"] }
-reqwest = { version = "0.11", features = ["blocking"] }
-serde-xml-rs = "0.6"
+reqwest = { version = "0.13", features = ["blocking"] }
+serde-xml-rs = "0.8"
 serde_json = "1"
-zip = "4.0.0"
-tar = "0.4.44"
-flate2 = "1.1.2"
+zip = "8.6.0"
+tar = "0.4.45"
+flate2 = "1.1.9"
 tauri-plugin-deep-link = "2"
 tauri-plugin-store = "2"
-open = "5.3.2"
+open = "5.3.5"
 tauri-plugin-clipboard-manager = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-shell = "2"
@@ -39,7 +39,7 @@ tauri-plugin-upload = "2"
 tauri-plugin-os = "2"
 
 [target."cfg(any(target_os = \"macos\", windows, target_os = \"linux\"))".dependencies]
-tauri-plugin-single-instance = { version = "2.0.0", features = ["deep-link"] }
+tauri-plugin-single-instance = { version = "2.4.2", features = ["deep-link"] }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"
