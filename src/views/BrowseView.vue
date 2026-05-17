@@ -27,8 +27,8 @@ const columns: any[] = [
   { accessorKey: 'currentPlayers', header: 'Players' },
 ];
 
-function onSelect(row: TableRow<Server>) {
-    onJoin(row.original as Server);
+function onSelect(_event: Event, row: TableRow<Server>) {
+  onJoin(row.original as Server);
 }
 </script>
 

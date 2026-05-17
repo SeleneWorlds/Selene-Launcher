@@ -29,7 +29,7 @@ export const useAuthStore = defineStore("auth", () => {
   const keycloak = new arctic.KeyCloak(realmUrl, clientId, null, redirectUri);
 
   async function loadState() {
-    const persistentStore = await load("auth.json", { autoSave: false });
+    const persistentStore = await load("auth.json", { autoSave: false, defaults: {} });
     session.accessToken = await persistentStore.get<string>(
       "accessToken"
     );
@@ -51,7 +51,7 @@ export const useAuthStore = defineStore("auth", () => {
   }
 
   async function saveState() {
-    const persistentStore = await load("auth.json", { autoSave: false });
+    const persistentStore = await load("auth.json", { autoSave: false, defaults: {} });
     await persistentStore.set("accessToken", session.accessToken);
     await persistentStore.set(
       "accessTokenExpiresAt",

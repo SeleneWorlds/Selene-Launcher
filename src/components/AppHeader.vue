@@ -2,25 +2,34 @@
 import type { NavigationMenuItem } from "@nuxt/ui";
 import { useTemplateRef, computed, ref } from "vue";
 import { useAuthStore } from "../stores/auth";
+import { isGenericLauncher, launcherConfig } from "../launcherConfig";
 
 import SeleneLogo from "./SeleneLogo.vue";
 import DeviceLoginModal from "../components/DeviceLoginModal.vue";
 import SettingsModal from "../components/SettingsModal.vue";
 
-const items = computed<NavigationMenuItem[]>(() => [
-  {
-    label: "Selene",
-    to: "/",
-  },
-  {
-    label: "Browse",
-    to: "/browse",
-  },
-  {
-    label: "Discord",
-    to: "https://discord.gg/S7maQVRRa9",
-  },
-]);
+const items = computed<NavigationMenuItem[]>(() => {
+  const navigationItems: NavigationMenuItem[] = [
+    {
+      label: launcherConfig.homeLabel,
+      to: "/",
+    },
+  ];
+
+  if (isGenericLauncher) {
+    navigationItems.push({
+      label: "Browse",
+      to: "/browse",
+    });
+  }
+
+  navigationItems.push({
+    label: launcherConfig.communityLabel,
+    to: launcherConfig.communityUrl,
+  });
+
+  return navigationItems;
+});
 
 const auth = useAuthStore();
 const loginModal = useTemplateRef('loginModal');

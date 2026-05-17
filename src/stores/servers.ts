@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import { Server } from '../types';
+import { isDedicatedLauncher, launcherConfig } from '../launcherConfig';
 
 
 export const useServersStore = defineStore('servers', () => {
@@ -13,10 +14,15 @@ export const useServersStore = defineStore('servers', () => {
   const errorServers = ref<string | null>(null);
 
   async function fetchFeatured() {
+    if (isDedicatedLauncher) {
+      featured.value = launcherConfig.dedicatedServer;
+      return;
+    }
+
     loadingFeatured.value = true;
     errorFeatured.value = null;
     try {
-      const res = await tauriFetch('https://telescope.seleneworlds.com/featured', {
+      const res = await tauriFetch(launcherConfig.discovery.featuredUrl, {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
       });
@@ -34,10 +40,15 @@ export const useServersStore = defineStore('servers', () => {
   }
 
   async function fetchServers() {
+    if (isDedicatedLauncher) {
+      servers.value = launcherConfig.dedicatedServer ? [launcherConfig.dedicatedServer] : [];
+      return;
+    }
+
     loadingServers.value = true;
     errorServers.value = null;
     try {
-      const res = await tauriFetch('https://telescope.seleneworlds.com/servers', {
+      const res = await tauriFetch(launcherConfig.discovery.serversUrl, {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
       });

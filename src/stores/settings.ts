@@ -14,7 +14,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const lastJoinedServer = ref<Server | null>(null);
 
   async function loadSettings() {
-    const persistentStore = await load(SETTINGS_FILE, { autoSave: false });
+    const persistentStore = await load(SETTINGS_FILE, { autoSave: false, defaults: {} });
     const storedReleaseChannel = await persistentStore.get<ReleaseChannel>('releaseChannel');
     if (storedReleaseChannel === 'stable' || storedReleaseChannel === 'experimental') {
       releaseChannel.value = storedReleaseChannel;
@@ -36,7 +36,7 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   async function saveSettings() {
-    const persistentStore = await load(SETTINGS_FILE, { autoSave: false });
+    const persistentStore = await load(SETTINGS_FILE, { autoSave: false, defaults: {} });
     await persistentStore.set('releaseChannel', releaseChannel.value);
     await persistentStore.set('jrePath', jrePath.value);
     await persistentStore.set('lastJoinedServer', lastJoinedServer.value);

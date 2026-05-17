@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "node ./scripts/run-tauri.mjs"
   },
   "dependencies": {
     "@nuxt/ui": "^4.7.1",
