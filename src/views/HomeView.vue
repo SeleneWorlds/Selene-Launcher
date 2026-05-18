@@ -18,8 +18,8 @@ const { featured: featuredServer, servers } = storeToRefs(serversStore);
 const localServer = ref<Server>({
   id: "local-server",
   name: "Local Server",
-  address: "http://localhost:8080",
-  port: 7777,
+  address: "localhost",
+  port: 8147,
   apiUrl: "http://localhost:8080",
   description: "Local server for testing",
   currentPlayers: 0,
