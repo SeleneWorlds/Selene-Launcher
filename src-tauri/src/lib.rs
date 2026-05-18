@@ -38,7 +38,7 @@ async fn extract_file(file_path: String, dest_dir: String) -> Result<String, Str
         "gz" => extract_tar(file_path, dest_dir).await,
         "tar" => extract_tar(file_path, dest_dir).await,
         _ => Err(format!("Unsupported file extension: {}", file_extension)),
-    }    
+    }
 }
 
 #[tauri::command]
@@ -166,7 +166,7 @@ fn launch_game(
     let mut args = java_args;
     args.push("-cp".to_string());
     args.push(classpath.join(":"));
-    args.push("world.selene.client.ClientBootstrapKt".to_string());
+    args.push("com.seleneworlds.client.ClientBootstrapKt".to_string());
     args.extend(game_args);
     println!("Launching game with Java {} and args: {}", java_cmd, args.join(" "));
     Command::new(java_cmd)
