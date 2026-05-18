@@ -79,6 +79,17 @@ const bundlesToUpdate = ref<
 const bundleDownloadProgress = ref<string | null>(null);
 const showBundlePrompt = ref(false);
 
+function normalizeServerAddress(address: string): string {
+  try {
+    return new URL(address).hostname;
+  } catch {
+    return address
+      .replace(/^[a-z]+:\/\//i, "")
+      .replace(/\/.*$/, "")
+      .replace(/:\d+$/, "");
+  }
+}
+
 async function attemptJoin() {
   errorMessage.value = null;
   try {
@@ -202,7 +213,7 @@ async function finalizeJoin() {
     }
 
     // Build gameArgs: -h host -p port -b bundleId path (for each bundle)
-    const gameArgs = ['-h', props.server.address, '-p', String(props.server.port), '-t', auth.joinToken];
+    const gameArgs = ['-h', normalizeServerAddress(props.server.address), '-p', String(props.server.port), '-t', auth.joinToken];
     const serverHash = await hashStringSHA256(props.server.apiUrl);
     for (const [bundleId, bundle] of Object.entries(bundles.value || {})) {
       let bundleDir;
