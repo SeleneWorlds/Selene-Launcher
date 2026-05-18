@@ -3,13 +3,13 @@ import { onMounted, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useServersStore } from '../stores/servers';
 import QueueModal from '../components/QueueModal.vue';
-import { Server } from '../types';
+import type { JoinableServer, Server } from '../types';
 import type { TableRow } from '@nuxt/ui'
 
 const serversStore = useServersStore();
 const { servers } = storeToRefs(serversStore);
 
-const selectedServer = ref<Server | null>(null);
+const selectedServer = ref<JoinableServer | null>(null);
 const showQueueModal = ref(false);
 
 function onJoin(server: Server) {

@@ -20,13 +20,13 @@ import { logError, logInfo, logWarn } from "../logger";
 import DownloadGameModal from "./DownloadGameModal.vue";
 import DownloadJreModal from "./DownloadJreModal.vue";
 import DeviceLoginModal from "./DeviceLoginModal.vue";
-import { Server } from '../types';
+import type { JoinableServer, ServerStatus } from "../types";
 
 const auth = useAuthStore();
 
 function logJoinFlowError(message: string, details?: Record<string, unknown>): void {
   logError(`[QueueModal] ${message}`, {
-    serverId: props.server?.id,
+    serverId: serverStatus.value?.id,
     serverName: props.server?.name,
     serverApiUrl: props.server?.apiUrl,
     ...details,
@@ -78,7 +78,7 @@ function handleError(err: unknown): void {
   pollingActive.value = false;
 }
 const props = defineProps<{
-  server: Server | null;
+  server: JoinableServer | null;
 }>();
 
 const modelValue = defineModel<boolean>();
@@ -88,6 +88,7 @@ const queueStatus = ref<{
   message: string;
   token?: string;
 } | null>(null);
+const serverStatus = ref<ServerStatus | null>(null);
 const pollingActive = ref(false);
 const errorMessage = ref<string | null>(null);
 
@@ -137,7 +138,29 @@ async function attemptJoin() {
   errorMessage.value = null;
   try {
     if (!props.server) throw new Error("No server selected");
-    if (!props.server.id) throw new Error("Selected server is missing an ID");
+    if (!serverStatus.value) {
+      logInfo("[QueueModal] Resolving server status", {
+        serverApiUrl: props.server.apiUrl,
+      });
+      const statusResponse = await tauriFetch(props.server.apiUrl, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+      });
+      if (!statusResponse.ok) {
+        const responseBody = await readResponseDetails(statusResponse);
+        logJoinFlowError("Failed to resolve server status", {
+          status: statusResponse.status,
+          statusText: statusResponse.statusText,
+          responseBody,
+        });
+        throw new Error(`Failed to load server status: ${statusResponse.status} ${statusResponse.statusText}`);
+      }
+      serverStatus.value = await statusResponse.json() as ServerStatus;
+    }
+    const resolvedServer = serverStatus.value;
+    if (!resolvedServer.id) throw new Error("Resolved server status is missing an ID");
     
     // Check session validity before attempting to connect
     try {
@@ -152,7 +175,7 @@ async function attemptJoin() {
       throw err;
     }
     
-    const brokerAccessToken = await auth.brokerAccessToken(props.server.id);
+    const brokerAccessToken = await auth.brokerAccessToken(resolvedServer.id);
     const res = await tauriFetch(`${props.server.apiUrl}/join`, {
       method: "POST",
       headers: {
@@ -183,7 +206,7 @@ async function attemptJoin() {
     if (queueStatus.value) {
       if (queueStatus.value.status === "Rejected") {
         logWarn("[QueueModal] Queue status rejected", {
-          serverId: props.server.id,
+          serverId: resolvedServer.id,
           queueStatus: queueStatus.value,
         });
         pollingActive.value = false;
@@ -192,10 +215,10 @@ async function attemptJoin() {
         queueStatus.value.token
       ) {
         logInfo("[QueueModal] Queue status accepted", {
-          serverId: props.server.id,
+          serverId: resolvedServer.id,
         });
         auth.updateJoinToken(queueStatus.value.token);
-        settings.setLastJoinedServer(props.server);
+        settings.setLastJoinedServer(resolvedServer);
         pollingActive.value = false;
         logInfo("[QueueModal] Retrieving bundles for server", {
           serverApiUrl: props.server.apiUrl,
@@ -231,7 +254,9 @@ async function acceptBundleDownloads() {
 async function finalizeJoin() {
   try {
     if (!props.server) throw new Error('No server selected');
+    if (!serverStatus.value) throw new Error("Server status has not been loaded");
     if (!latestVersion.value) throw new Error('No game version available');
+    const resolvedServer = serverStatus.value;
 
     // Ensure latest version is downloaded before launching
     let downloaded = await isDownloaded(latestVersion.value);
@@ -271,7 +296,7 @@ async function finalizeJoin() {
     }
 
     // Build gameArgs: -h host -p port -b bundleId path (for each bundle)
-    const gameArgs = ['-h', normalizeServerAddress(props.server.address), '-p', String(props.server.port), '-t', auth.joinToken];
+    const gameArgs = ['-h', normalizeServerAddress(resolvedServer.address), '-p', String(resolvedServer.port), '-t', auth.joinToken];
     const serverHash = await hashStringSHA256(props.server.apiUrl);
     for (const [bundleId, bundle] of Object.entries(bundles.value || {})) {
       let bundleDir;
@@ -316,11 +341,11 @@ async function close() {
   errorMessage.value = null;
   try {
     if (!props.server) throw new Error("No server selected");
-    if (!props.server.id) throw new Error("Selected server is missing an ID");
+    if (!serverStatus.value?.id) throw new Error("Resolved server status is missing an ID");
     logInfo("[QueueModal] Leaving queue", {
       url: `${props.server.apiUrl}/leave`,
     });
-    const brokerAccessToken = await auth.brokerAccessToken(props.server.id);
+    const brokerAccessToken = await auth.brokerAccessToken(serverStatus.value.id);
     const res = await tauriFetch(`${props.server.apiUrl}/leave`, {
       method: "POST",
       headers: {
@@ -344,6 +369,15 @@ async function close() {
 onMounted(async () => {
   await versionStore.fetchLatestVersion(settings.releaseChannel);
 })
+
+watch(
+  () => props.server?.apiUrl,
+  () => {
+    serverStatus.value = null;
+    queueStatus.value = null;
+    errorMessage.value = null;
+  }
+);
 
 watch(
   () => modelValue.value,

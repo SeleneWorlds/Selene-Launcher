@@ -8,7 +8,7 @@ import ServerTicker from "../components/ServerTicker.vue";
 import QueueModal from "../components/QueueModal.vue";
 import { useSettingsStore } from "../stores/settings";
 import { useServersStore } from "../stores/servers";
-import { Server } from '../types';
+import type { JoinableServer, Server } from '../types';
 import { isDedicatedLauncher, launcherConfig } from "../launcherConfig";
 
 const settings = useSettingsStore();
@@ -26,7 +26,7 @@ const localServer = ref<Server>({
   maxPlayers: 0,
 });
 const dedicatedServer = launcherConfig.dedicatedServer;
-const selectedServer = ref<Server | null>(null);
+const selectedServer = ref<JoinableServer | null>(null);
 const showQueueModal = ref(false);
 
 function onJoin(server: Server) {

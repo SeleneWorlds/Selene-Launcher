@@ -1,11 +1,17 @@
 
-export type Server = {
+export type JoinableServer = {
+  apiUrl: string;
+  name?: string;
+};
+
+export type ServerStatus = JoinableServer & {
   id: string;
   name: string;
   address: string;
   port: number;
-  apiUrl: string;
   description: string;
   currentPlayers: number;
   maxPlayers: number;
 };
+
+export type Server = ServerStatus;
