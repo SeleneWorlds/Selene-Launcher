@@ -15,6 +15,7 @@ import { hashStringSHA256 } from "../hashUtil";
 import { ensureGlobalClientBundlesDir } from "../globalBundlesUtil";
 import { readDir } from "@tauri-apps/plugin-fs";
 import { UnauthorizedError } from "../errors";
+import { logError, logInfo, logWarn } from "../logger";
 
 import DownloadGameModal from "./DownloadGameModal.vue";
 import DownloadJreModal from "./DownloadJreModal.vue";
@@ -23,16 +24,58 @@ import { Server } from '../types';
 
 const auth = useAuthStore();
 
+function logJoinFlowError(message: string, details?: Record<string, unknown>): void {
+  logError(`[QueueModal] ${message}`, {
+    serverId: props.server?.id,
+    serverName: props.server?.name,
+    serverApiUrl: props.server?.apiUrl,
+    ...details,
+  });
+}
+
+async function readResponseDetails(response: Response) {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+function shouldPromptLogin(err: UnauthorizedError): boolean {
+  const step = err.context?.step;
+  return step === "accessToken" || step === "refreshAccessToken" || step === "brokerAccessToken";
+}
+
 function handleError(err: unknown): void {
-  if (err instanceof UnauthorizedError) {
+  if (err instanceof UnauthorizedError && shouldPromptLogin(err)) {
     errorMessage.value = "Session expired. Please log in again.";
+    logJoinFlowError("Unauthorized during join flow", {
+      errorMessage: err.message,
+      context: err.context,
+      cause: err.cause,
+    });
     // Start sign in flow for session expiration
     loginModal.value?.open();
+  } else if (err instanceof UnauthorizedError) {
+    errorMessage.value = err.message || "Join request was rejected by the server.";
+    logJoinFlowError("Join flow rejected by server", {
+      errorMessage: err.message,
+      context: err.context,
+      cause: err.cause,
+    });
+  } else if (err instanceof Error) {
+    errorMessage.value = err.message || "Network error or unexpected error.";
+    logJoinFlowError("Join flow failed", {
+      errorMessage: err.message,
+      error: err,
+    });
   } else {
     errorMessage.value = "Network error or unexpected error.";
+    logJoinFlowError("Unexpected join flow error", {
+      error: err,
+    });
   }
   pollingActive.value = false;
-  console.error(err);
 }
 const props = defineProps<{
   server: Server | null;
@@ -117,12 +160,20 @@ async function attemptJoin() {
       },
     });
     if (res.status === 401) {
-      throw new UnauthorizedError();
-    }
-    if (!res.ok) {
-      console.log("[QueueModal] Failed to join queue", {
+      const responseBody = await readResponseDetails(res);
+      logJoinFlowError("Join request returned 401", {
         status: res.status,
         statusText: res.statusText,
+        responseBody,
+      });
+      throw new Error("Join request rejected by server");
+    }
+    if (!res.ok) {
+      const responseBody = await readResponseDetails(res);
+      logJoinFlowError("Failed to join queue", {
+        status: res.status,
+        statusText: res.statusText,
+        responseBody,
       });
       errorMessage.value = `Failed to join queue: ${res.status} ${res.statusText}`;
       pollingActive.value = false;
@@ -131,20 +182,24 @@ async function attemptJoin() {
     queueStatus.value = await res.json();
     if (queueStatus.value) {
       if (queueStatus.value.status === "Rejected") {
-        console.log("[QueueModal] Queue status: Rejected");
+        logWarn("[QueueModal] Queue status rejected", {
+          serverId: props.server.id,
+          queueStatus: queueStatus.value,
+        });
         pollingActive.value = false;
       } else if (
         queueStatus.value.status === "Accepted" &&
         queueStatus.value.token
       ) {
-        console.log("[QueueModal] Queue status: Accepted");
+        logInfo("[QueueModal] Queue status accepted", {
+          serverId: props.server.id,
+        });
         auth.updateJoinToken(queueStatus.value.token);
         settings.setLastJoinedServer(props.server);
         pollingActive.value = false;
-        console.log(
-          "[QueueModal] Retrieving bundles for server",
-          props.server.apiUrl
-        );
+        logInfo("[QueueModal] Retrieving bundles for server", {
+          serverApiUrl: props.server.apiUrl,
+        });
         const bundleResult = (await checkBundles(props.server.apiUrl))
         bundles.value = bundleResult?.bundles ?? {};
         bundlesToUpdate.value = bundleResult?.bundlesToUpdate ?? [];
@@ -155,6 +210,9 @@ async function attemptJoin() {
       }
     }
   } catch (err) {
+    logJoinFlowError("Attempt join failed", {
+      error: err,
+    });
     handleError(err);
   }
 }
@@ -243,7 +301,9 @@ async function finalizeJoin() {
     } else {
       errorMessage.value = String(err);
     }
-    console.error(err);
+    logError("[QueueModal] Finalize join failed", {
+      error: err,
+    });
   }
 }
 
@@ -257,7 +317,7 @@ async function close() {
   try {
     if (!props.server) throw new Error("No server selected");
     if (!props.server.id) throw new Error("Selected server is missing an ID");
-    console.log("[QueueModal] Leaving queue", {
+    logInfo("[QueueModal] Leaving queue", {
       url: `${props.server.apiUrl}/leave`,
     });
     const brokerAccessToken = await auth.brokerAccessToken(props.server.id);
@@ -270,10 +330,10 @@ async function close() {
     if (res.status === 401) {
       throw new UnauthorizedError();
     } else if (!res.ok) {
-      console.log(
-        `[QueueModal] Failed to leave queue: ${res.status} ${res.statusText}`
-      );
-      console.log(`Failed to leave queue: ${res.status} ${res.statusText}`);
+      logError("[QueueModal] Failed to leave queue", {
+        status: res.status,
+        statusText: res.statusText,
+      });
     }
   } catch (err) {
     handleError(err);

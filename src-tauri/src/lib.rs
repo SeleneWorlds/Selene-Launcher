@@ -1,3 +1,5 @@
+use log::info;
+
 fn resolve_java_bin(jre_path: &str) -> String {
     use std::path::Path;
     let path = Path::new(jre_path);
@@ -244,6 +246,7 @@ fn find_java_path() -> Option<String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let mut builder = tauri::Builder::default()
+        .plugin(tauri_plugin_log::Builder::new().build())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_upload::init())
         .plugin(tauri_plugin_shell::init())
@@ -254,7 +257,7 @@ pub fn run() {
     #[cfg(desktop)]
     {
         builder = builder.plugin(tauri_plugin_single_instance::init(|_app, argv, _cwd| {
-            println!("a new app instance was opened with {argv:?} and the deep link event was already triggered");
+            info!("a new app instance was opened with {argv:?} and the deep link event was already triggered");
             // when defining deep link schemes at runtime, you must also check `argv` here
         }));
     }
@@ -266,7 +269,7 @@ pub fn run() {
             {
                 use tauri_plugin_deep_link::DeepLinkExt;
                 app.deep_link().register_all()?;
-                println!("Deep link registered");
+                info!("Deep link registered");
             }
             Ok(())
         })

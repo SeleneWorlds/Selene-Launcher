@@ -5,6 +5,15 @@ import { load } from "@tauri-apps/plugin-store";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import { UnauthorizedError } from "../errors";
 import { launcherConfig } from "../launcherConfig";
+import { logError, logInfo } from "../logger";
+
+async function readResponseDetails(response: Response) {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
 
 export const useAuthStore = defineStore("auth", () => {
   const session = reactive<{
@@ -82,7 +91,10 @@ export const useAuthStore = defineStore("auth", () => {
 
   async function validateAuthorizationCode(code: string, state: string) {
     if (state !== session.state) {
-      console.error("State mismatch");
+      logError("[AuthStore] State mismatch during authorization code validation", {
+        expectedState: session.state,
+        actualState: state,
+      });
       throw new Error("Invalid request");
     }
 
@@ -104,45 +116,102 @@ export const useAuthStore = defineStore("auth", () => {
       await saveState();
     } catch (e) {
       if (e instanceof arctic.OAuth2RequestError) {
-        // Invalid authorization code, credentials, or redirect URI
-        const code = e.code;
-        console.log(code);
+        logError("[AuthStore] Authorization code rejected", {
+          oauthErrorCode: e.code,
+        });
       } else if (e instanceof arctic.ArcticFetchError) {
-        console.log(e);
+        logError("[AuthStore] Failed to reach identity provider during authorization code validation", {
+          error: e,
+        });
       } else {
-        console.error(e);
+        logError("[AuthStore] Unexpected error during authorization code validation", {
+          error: e,
+        });
       }
     }
   }
 
   async function accessToken() {
     if (session.accessToken === "") {
-      throw new UnauthorizedError();
+      throw new UnauthorizedError("No launcher access token available", {
+        context: {
+          step: "accessToken",
+        },
+      });
     }
 
-    const now = new Date();
-    if (session.accessTokenExpiresAt && new Date(session.accessTokenExpiresAt) < now) {
+    const now = Date.now();
+    if (session.accessTokenExpiresAt && session.accessTokenExpiresAt < now) {
+      if (!session.refreshToken) {
+        logError("[AuthStore] Access token expired and no refresh token is available", {
+          accessTokenExpiresAt: session.accessTokenExpiresAt,
+          refreshTokenExpiresAt: session.refreshTokenExpiresAt,
+        });
+        signOut();
+        throw new UnauthorizedError("Session expired and no refresh token is available", {
+          context: {
+            step: "refreshAccessToken",
+            accessTokenExpiresAt: session.accessTokenExpiresAt,
+            refreshTokenExpiresAt: session.refreshTokenExpiresAt,
+          },
+        });
+      }
+
+      if (session.refreshTokenExpiresAt && session.refreshTokenExpiresAt < now) {
+        logError("[AuthStore] Refresh token is expired", {
+          accessTokenExpiresAt: session.accessTokenExpiresAt,
+          refreshTokenExpiresAt: session.refreshTokenExpiresAt,
+        });
+        signOut();
+        throw new UnauthorizedError("Session expired and refresh token is expired", {
+          context: {
+            step: "refreshAccessToken",
+            accessTokenExpiresAt: session.accessTokenExpiresAt,
+            refreshTokenExpiresAt: session.refreshTokenExpiresAt,
+          },
+        });
+      }
+
       try {
-        if (session.refreshToken) {
-          const tokens = await keycloak.refreshAccessToken(session.refreshToken);
-          session.accessToken = tokens.accessToken();
-          session.accessTokenExpiresAt = tokens.accessTokenExpiresAt().getTime();
-          session.refreshToken = tokens.refreshToken();
-          if (
-            "refresh_expires_in" in tokens.data &&
-            typeof tokens.data.refresh_expires_in === "number"
-          ) {
-            session.refreshTokenExpiresAt = tokens.data.refresh_expires_in;
-          }
+        const tokens = await keycloak.refreshAccessToken(session.refreshToken);
+        session.accessToken = tokens.accessToken();
+        session.accessTokenExpiresAt = tokens.accessTokenExpiresAt().getTime();
+        session.refreshToken = tokens.refreshToken();
+        if (
+          "refresh_expires_in" in tokens.data &&
+          typeof tokens.data.refresh_expires_in === "number"
+        ) {
+          session.refreshTokenExpiresAt = Date.now() + (tokens.data.refresh_expires_in * 1000);
         }
       } catch (e) {
+        logError("[AuthStore] Failed to refresh access token", {
+          accessTokenExpiresAt: session.accessTokenExpiresAt,
+          refreshTokenExpiresAt: session.refreshTokenExpiresAt,
+          cause: e,
+        });
+        signOut();
         if (e instanceof arctic.OAuth2RequestError) {
-          // Invalid authorization code, credentials, or redirect URI
-          console.error(e);
+          throw new UnauthorizedError("Refresh token rejected by identity provider", {
+            cause: e,
+            context: {
+              step: "refreshAccessToken",
+              oauthErrorCode: e.code,
+            },
+          });
         } else if (e instanceof arctic.ArcticFetchError) {
-          console.error(e);
+          throw new UnauthorizedError("Unable to reach identity provider while refreshing session", {
+            cause: e,
+            context: {
+              step: "refreshAccessToken",
+            },
+          });
         } else {
-          console.error(e);
+          throw new UnauthorizedError("Unexpected error while refreshing session", {
+            cause: e,
+            context: {
+              step: "refreshAccessToken",
+            },
+          });
         }
       }
       
@@ -171,9 +240,29 @@ export const useAuthStore = defineStore("auth", () => {
       }),
     });
     if (response.status === 401) {
-      throw new UnauthorizedError();
+      const responseBody = await readResponseDetails(response);
+      logError("[AuthStore] Broker token exchange returned 401", {
+        serverId,
+        authBrokerUrl: launcherConfig.authBrokerUrl,
+        responseBody,
+      });
+      throw new UnauthorizedError("Auth broker rejected launcher access token", {
+        context: {
+          step: "brokerAccessToken",
+          serverId,
+          status: response.status,
+          responseBody,
+        },
+      });
     }
     if (!response.ok) {
+      const responseBody = await readResponseDetails(response);
+      logError("[AuthStore] Failed to exchange broker token", {
+        serverId,
+        status: response.status,
+        statusText: response.statusText,
+        responseBody,
+      });
       throw new Error(`Failed to exchange broker token: ${response.status} ${response.statusText}`);
     }
 
@@ -186,12 +275,19 @@ export const useAuthStore = defineStore("auth", () => {
       token: data.token,
       expiresAt: new Date(data.expires_at).getTime(),
     };
+    logInfo("[AuthStore] Broker token exchange succeeded", {
+      serverId,
+      expiresAt: data.expires_at,
+    });
     return data.token;
   }
 
   function signOut() {
     session.accessToken = "";
+    session.accessTokenExpiresAt = 0;
     session.refreshToken = "";
+    session.refreshTokenExpiresAt = 0;
+    session.joinToken = "";
     for (const key of Object.keys(brokerTokens)) {
       delete brokerTokens[key];
     }

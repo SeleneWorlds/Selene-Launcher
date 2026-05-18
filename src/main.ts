@@ -11,6 +11,7 @@ import HomeView from "./views/HomeView.vue";
 import BrowseView from "./views/BrowseView.vue";
 import { useAuthStore } from "./stores/auth";
 import { isGenericLauncher, launcherConfig } from "./launcherConfig";
+import { initTauriLogging, logError, logInfo } from "./logger";
 
 const routes: RouteRecordRaw[] = [
   { path: "/", component: HomeView },
@@ -30,21 +31,22 @@ const router = createRouter({
 const pinia = createPinia();
 
 document.title = launcherConfig.windowTitle;
+initTauriLogging();
 
 createApp(App).use(ui).use(router).use(pinia).mount("#app");
 
 onOpenUrl(async ([url]) => {
-  console.log(url)
+  logInfo("[Auth] Received deep link", { url });
   const parsedUrl = new URL(url);
   const path = parsedUrl.host;
   if (path === "auth") {
-    console.log(path)
+    logInfo("[Auth] Handling auth deep link", { path });
     const state = parsedUrl.searchParams.get("state");
     const code = parsedUrl.searchParams.get("code");
     if (code && state) {
       useAuthStore().validateAuthorizationCode(code, state);
     } else {
-      console.error("Missing code or state")
+      logError("[Auth] Missing code or state in deep link", { url });
     }
   }
 });
