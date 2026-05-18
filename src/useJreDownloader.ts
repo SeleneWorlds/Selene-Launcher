@@ -12,7 +12,7 @@ export function useJreDownloader() {
   const total = ref(0);
   const error = ref<string | null>(null);
 
-  const JRE_VERSION = "21.0.8+9";
+  const JRE_VERSION = "25.0.3+9";
 
   function mapOs(os: string) {
     switch (os) {
@@ -67,7 +67,7 @@ export function useJreDownloader() {
         "+",
         "_"
       )}.${targetExtension}`;
-      const jreUrl = `https://github.com/adoptium/temurin21-binaries/releases/download/jdk-${JRE_VERSION}/${targetFile}`;
+      const jreUrl = `https://github.com/adoptium/temurin25-binaries/releases/download/jdk-${JRE_VERSION}/${targetFile}`;
       const baseDir = await appDataDir();
       const jreDir = await join(baseDir, "jre");
       if (!(await exists(jreDir))) {
