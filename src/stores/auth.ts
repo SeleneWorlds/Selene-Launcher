@@ -2,7 +2,9 @@ import { defineStore } from "pinia";
 import { reactive, computed } from "vue";
 import * as arctic from "arctic";
 import { load } from "@tauri-apps/plugin-store";
+import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import { UnauthorizedError } from "../errors";
+import { launcherConfig } from "../launcherConfig";
 
 export const useAuthStore = defineStore("auth", () => {
   const session = reactive<{
@@ -22,6 +24,10 @@ export const useAuthStore = defineStore("auth", () => {
     refreshTokenExpiresAt: 0,
     joinToken: "",
   });
+  const brokerTokens = reactive<Record<string, {
+    token: string;
+    expiresAt: number;
+  }>>({});
 
   const realmUrl = "https://id.twelveiterations.com/realms/Selene";
   const clientId = "selene-launcher";
@@ -146,9 +152,49 @@ export const useAuthStore = defineStore("auth", () => {
     return session.accessToken;
   }
 
+  async function brokerAccessToken(serverId: string) {
+    const cachedToken = brokerTokens[serverId];
+    const now = Date.now();
+    if (cachedToken && cachedToken.expiresAt - 30_000 > now) {
+      return cachedToken.token;
+    }
+
+    const launcherAccessToken = await accessToken();
+    const response = await tauriFetch(`${launcherConfig.authBrokerUrl}/token/exchange`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${launcherAccessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        server_id: serverId,
+      }),
+    });
+    if (response.status === 401) {
+      throw new UnauthorizedError();
+    }
+    if (!response.ok) {
+      throw new Error(`Failed to exchange broker token: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json() as {
+      token: string;
+      expires_at: string;
+      token_type: string;
+    };
+    brokerTokens[serverId] = {
+      token: data.token,
+      expiresAt: new Date(data.expires_at).getTime(),
+    };
+    return data.token;
+  }
+
   function signOut() {
     session.accessToken = "";
     session.refreshToken = "";
+    for (const key of Object.keys(brokerTokens)) {
+      delete brokerTokens[key];
+    }
     saveState();
   }
 
@@ -167,6 +213,7 @@ export const useAuthStore = defineStore("auth", () => {
   return {
     session,
     accessToken,
+    brokerAccessToken,
     createAuthorizationURL,
     validateAuthorizationCode,
     isSignedIn,

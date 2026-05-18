@@ -9,6 +9,7 @@ export type LauncherConfig = {
   homeLabel: string;
   communityLabel: string;
   communityUrl: string;
+  authBrokerUrl: string;
   discovery: {
     featuredUrl: string;
     serversUrl: string;
@@ -57,6 +58,7 @@ function readDedicatedServer(mode: LauncherMode): Server | null {
   }
 
   return {
+    id: readString("VITE_DEDICATED_SERVER_ID"),
     name: readString("VITE_DEDICATED_SERVER_NAME"),
     address: readString("VITE_DEDICATED_SERVER_ADDRESS"),
     port: readNumber("VITE_DEDICATED_SERVER_PORT"),
@@ -77,6 +79,7 @@ export const launcherConfig: LauncherConfig = Object.freeze({
   homeLabel: readString("VITE_HOME_LABEL", appName),
   communityLabel: readString("VITE_COMMUNITY_LABEL", "Discord"),
   communityUrl: readString("VITE_COMMUNITY_URL", "https://discord.gg/S7maQVRRa9"),
+  authBrokerUrl: readString("VITE_AUTH_BROKER_URL", "https://auth-broker.seleneworlds.com"),
   discovery: {
     featuredUrl: readString("VITE_DISCOVERY_FEATURED_URL", "https://telescope.seleneworlds.com/featured"),
     serversUrl: readString("VITE_DISCOVERY_SERVERS_URL", "https://telescope.seleneworlds.com/servers"),

@@ -83,6 +83,7 @@ async function attemptJoin() {
   errorMessage.value = null;
   try {
     if (!props.server) throw new Error("No server selected");
+    if (!props.server.id) throw new Error("Selected server is missing an ID");
     
     // Check session validity before attempting to connect
     try {
@@ -97,10 +98,11 @@ async function attemptJoin() {
       throw err;
     }
     
+    const brokerAccessToken = await auth.brokerAccessToken(props.server.id);
     const res = await tauriFetch(`${props.server.apiUrl}/join`, {
       method: "POST",
       headers: {
-        Authorization: "Bearer " + (await auth.accessToken()),
+        Authorization: "Bearer " + brokerAccessToken,
       },
     });
     if (res.status === 401) {
@@ -243,13 +245,15 @@ async function close() {
   errorMessage.value = null;
   try {
     if (!props.server) throw new Error("No server selected");
+    if (!props.server.id) throw new Error("Selected server is missing an ID");
     console.log("[QueueModal] Leaving queue", {
       url: `${props.server.apiUrl}/leave`,
     });
+    const brokerAccessToken = await auth.brokerAccessToken(props.server.id);
     const res = await tauriFetch(`${props.server.apiUrl}/leave`, {
       method: "POST",
       headers: {
-        Authorization: "Bearer " + (await auth.accessToken()),
+        Authorization: "Bearer " + brokerAccessToken,
       },
     });
     if (res.status === 401) {

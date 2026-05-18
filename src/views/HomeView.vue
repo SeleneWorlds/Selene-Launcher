@@ -16,6 +16,7 @@ const serversStore = useServersStore();
 const { lastJoinedServer } = storeToRefs(settings);
 const { featured: featuredServer, servers } = storeToRefs(serversStore);
 const localServer = ref<Server>({
+  id: "local-server",
   name: "Local Server",
   address: "http://localhost:8080",
   port: 7777,
