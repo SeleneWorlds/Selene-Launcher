@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { Server } from '../types';
+import type { FeaturedServer } from '../types';
 
 const props = defineProps<{
-  server: Server;
+  server: FeaturedServer;
 }>();
 
 const emit = defineEmits(['join']);

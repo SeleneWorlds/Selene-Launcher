@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
-import type { Server } from '../types';
+import type { ListedServer } from '../types';
 
 const props = defineProps<{
-  servers: Server[];
+  servers: ListedServer[];
   intervalMs?: number;
 }>();
 

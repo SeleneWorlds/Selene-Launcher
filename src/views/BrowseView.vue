@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useServersStore } from '../stores/servers';
 import QueueModal from '../components/QueueModal.vue';
-import type { JoinableServer, Server } from '../types';
+import type { JoinableServer, ListedServer } from '../types';
 import type { TableRow } from '@nuxt/ui'
 
 const serversStore = useServersStore();
@@ -12,7 +12,7 @@ const { servers } = storeToRefs(serversStore);
 const selectedServer = ref<JoinableServer | null>(null);
 const showQueueModal = ref(false);
 
-function onJoin(server: Server) {
+function onJoin(server: JoinableServer) {
   selectedServer.value = server;
   showQueueModal.value = true;
 }
@@ -27,8 +27,8 @@ const columns: any[] = [
   { accessorKey: 'currentPlayers', header: 'Players' },
 ];
 
-function onSelect(_event: Event, row: TableRow<Server>) {
-  onJoin(row.original as Server);
+function onSelect(_event: Event, row: TableRow<ListedServer>) {
+  onJoin(row.original as ListedServer);
 }
 </script>
 

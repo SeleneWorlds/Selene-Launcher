@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { storeToRefs } from "pinia";
+import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import FeaturedServerCard from "../components/FeaturedServerCard.vue";
 import LastJoinedServerCard from "../components/LastJoinedServerCard.vue";
 import LocalServerCard from "../components/LocalServerCard.vue";
@@ -8,35 +9,54 @@ import ServerTicker from "../components/ServerTicker.vue";
 import QueueModal from "../components/QueueModal.vue";
 import { useSettingsStore } from "../stores/settings";
 import { useServersStore } from "../stores/servers";
-import type { JoinableServer, Server } from '../types';
+import type { JoinableServer, ServerStatus } from '../types';
 import { isDedicatedLauncher, launcherConfig } from "../launcherConfig";
 
 const settings = useSettingsStore();
 const serversStore = useServersStore();
 const { lastJoinedServer } = storeToRefs(settings);
 const { featured: featuredServer, servers } = storeToRefs(serversStore);
-const localServer = ref<Server>({
-  id: "local-server",
+const localServer = ref<JoinableServer>({
   name: "Local Server",
-  address: "localhost",
-  port: 8147,
   apiUrl: "http://localhost:8080",
-  description: "Local server for testing",
-  currentPlayers: 0,
-  maxPlayers: 0,
 });
 const dedicatedServer = launcherConfig.dedicatedServer;
+const dedicatedServerStatus = ref<ServerStatus | null>(null);
 const selectedServer = ref<JoinableServer | null>(null);
 const showQueueModal = ref(false);
 
-function onJoin(server: Server) {
+function onJoin(server: JoinableServer) {
   selectedServer.value = server;
   showQueueModal.value = true;
+}
+
+async function fetchDedicatedServerStatus() {
+  if (!dedicatedServer) {
+    dedicatedServerStatus.value = null;
+    return;
+  }
+
+  try {
+    const res = await tauriFetch(dedicatedServer.apiUrl, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+    if (!res.ok) {
+      dedicatedServerStatus.value = null;
+      return;
+    }
+    dedicatedServerStatus.value = await res.json() as ServerStatus;
+  } catch {
+    dedicatedServerStatus.value = null;
+  }
 }
 
 onMounted(async () => {
   await settings.loadSettings();
   if (isDedicatedLauncher) {
+    await fetchDedicatedServerStatus();
     return;
   }
   await Promise.allSettled([serversStore.fetchFeatured(), serversStore.fetchServers()]);
@@ -83,11 +103,11 @@ onMounted(async () => {
               </div>
               <div>
                 <dt class="text-xs uppercase tracking-[0.2em] text-toned">Players</dt>
-                <dd class="mt-1 text-base font-medium">{{ dedicatedServer?.currentPlayers ?? 0 }} / {{ dedicatedServer?.maxPlayers ?? 0 }}</dd>
+                <dd class="mt-1 text-base font-medium">{{ dedicatedServerStatus?.currentPlayers ?? 0 }} / {{ dedicatedServerStatus?.maxPlayers ?? 0 }}</dd>
               </div>
               <div v-if="lastJoinedServer">
                 <dt class="text-xs uppercase tracking-[0.2em] text-toned">Last Played</dt>
-                <dd class="mt-1 text-base font-medium">{{ lastJoinedServer.name }}</dd>
+                <dd class="mt-1 text-base font-medium">{{ lastJoinedServer.name || lastJoinedServer.apiUrl }}</dd>
               </div>
             </dl>
           </div>

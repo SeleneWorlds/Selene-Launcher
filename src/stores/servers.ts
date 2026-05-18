@@ -1,13 +1,13 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
-import { Server } from '../types';
+import type { FeaturedServer, ListedServer } from '../types';
 import { isDedicatedLauncher, launcherConfig } from '../launcherConfig';
 
 
 export const useServersStore = defineStore('servers', () => {
-  const featured = ref<Server | null>(null);
-  const servers = ref<Server[]>([]);
+  const featured = ref<FeaturedServer | null>(null);
+  const servers = ref<ListedServer[]>([]);
   const loadingFeatured = ref(false);
   const loadingServers = ref(false);
   const errorFeatured = ref<string | null>(null);
@@ -15,7 +15,7 @@ export const useServersStore = defineStore('servers', () => {
 
   async function fetchFeatured() {
     if (isDedicatedLauncher) {
-      featured.value = launcherConfig.dedicatedServer;
+      featured.value = null;
       return;
     }
 
@@ -30,7 +30,7 @@ export const useServersStore = defineStore('servers', () => {
         featured.value = null;
         return;
       }
-      featured.value = await res.json() as Server;
+      featured.value = await res.json() as FeaturedServer;
     } catch (e: any) {
       errorFeatured.value = String(e?.message || e);
       featured.value = null;
@@ -41,7 +41,7 @@ export const useServersStore = defineStore('servers', () => {
 
   async function fetchServers() {
     if (isDedicatedLauncher) {
-      servers.value = launcherConfig.dedicatedServer ? [launcherConfig.dedicatedServer] : [];
+      servers.value = [];
       return;
     }
 
@@ -56,7 +56,7 @@ export const useServersStore = defineStore('servers', () => {
         servers.value = [];
         return;
       }
-      servers.value = (await res.json()).servers as Server[];
+      servers.value = (await res.json()).servers as ListedServer[];
     } catch (e: any) {
       errorServers.value = String(e?.message || e);
       servers.value = [];

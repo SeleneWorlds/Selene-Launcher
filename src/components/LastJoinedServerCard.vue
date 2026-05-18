@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { Server } from '../types';
+import type { JoinableServer } from '../types';
 
 const props = defineProps<{
-  server: Server;
+  server: JoinableServer;
 }>();
 
 const emit = defineEmits(['join']);
@@ -18,8 +18,7 @@ function joinQueue() {
       <div class="mb-3 text-sm uppercase tracking-wide text-primary-600 font-semibold">
         Last Joined Server
       </div>
-      <h2 class="text-3xl font-extrabold mb-2">{{ server.name }}</h2>
-      <p class="mb-5 text-lg text-gray-700">{{ server.description }}</p>
+      <h2 class="text-3xl font-extrabold mb-2">{{ server.name || "Previous Server" }}</h2>
       <div class="flex gap-3">
         <UButton
           size="xl"

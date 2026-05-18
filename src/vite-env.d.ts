@@ -17,8 +17,6 @@ interface ImportMetaEnv {
   readonly VITE_DEDICATED_SERVER_PORT?: string;
   readonly VITE_DEDICATED_SERVER_API_URL?: string;
   readonly VITE_DEDICATED_SERVER_DESCRIPTION?: string;
-  readonly VITE_DEDICATED_SERVER_CURRENT_PLAYERS?: string;
-  readonly VITE_DEDICATED_SERVER_MAX_PLAYERS?: string;
 }
 
 interface ImportMeta {

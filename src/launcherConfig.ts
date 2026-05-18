@@ -1,4 +1,4 @@
-import type { Server } from "./types";
+import type { DedicatedServer } from "./types";
 
 export type LauncherMode = "generic" | "dedicated";
 
@@ -14,7 +14,7 @@ export type LauncherConfig = {
     featuredUrl: string;
     serversUrl: string;
   };
-  dedicatedServer: Server | null;
+  dedicatedServer: DedicatedServer | null;
 };
 
 function readString(name: keyof ImportMetaEnv, fallback?: string): string {
@@ -52,20 +52,17 @@ function readNumber(name: keyof ImportMetaEnv, fallback?: number): number {
   return parsed;
 }
 
-function readDedicatedServer(mode: LauncherMode): Server | null {
+function readDedicatedServer(mode: LauncherMode): DedicatedServer | null {
   if (mode !== "dedicated") {
     return null;
   }
 
   return {
-    id: readString("VITE_DEDICATED_SERVER_ID"),
     name: readString("VITE_DEDICATED_SERVER_NAME"),
     address: readString("VITE_DEDICATED_SERVER_ADDRESS"),
     port: readNumber("VITE_DEDICATED_SERVER_PORT"),
     apiUrl: readString("VITE_DEDICATED_SERVER_API_URL"),
     description: readString("VITE_DEDICATED_SERVER_DESCRIPTION", ""),
-    currentPlayers: readNumber("VITE_DEDICATED_SERVER_CURRENT_PLAYERS", 0),
-    maxPlayers: readNumber("VITE_DEDICATED_SERVER_MAX_PLAYERS", 0),
   };
 }
 

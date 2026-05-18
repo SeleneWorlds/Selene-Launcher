@@ -134,6 +134,18 @@ function normalizeServerAddress(address: string): string {
   }
 }
 
+function resolveServerConnection(
+  status: Pick<ServerStatus, "host" | "port"> | null,
+  apiUrl: string,
+): { host: string; port: number } {
+  const url = new URL(apiUrl);
+  const fallbackPort = url.port ? Number(url.port) : url.protocol === "https:" ? 443 : 80;
+  return {
+    host: status?.host || url.hostname,
+    port: status?.port ?? fallbackPort,
+  };
+}
+
 async function attemptJoin() {
   errorMessage.value = null;
   try {
@@ -218,7 +230,7 @@ async function attemptJoin() {
           serverId: resolvedServer.id,
         });
         auth.updateJoinToken(queueStatus.value.token);
-        settings.setLastJoinedServer(resolvedServer);
+        settings.setLastJoinedServer(props.server);
         pollingActive.value = false;
         logInfo("[QueueModal] Retrieving bundles for server", {
           serverApiUrl: props.server.apiUrl,
@@ -256,7 +268,6 @@ async function finalizeJoin() {
     if (!props.server) throw new Error('No server selected');
     if (!serverStatus.value) throw new Error("Server status has not been loaded");
     if (!latestVersion.value) throw new Error('No game version available');
-    const resolvedServer = serverStatus.value;
 
     // Ensure latest version is downloaded before launching
     let downloaded = await isDownloaded(latestVersion.value);
@@ -296,7 +307,8 @@ async function finalizeJoin() {
     }
 
     // Build gameArgs: -h host -p port -b bundleId path (for each bundle)
-    const gameArgs = ['-h', normalizeServerAddress(resolvedServer.address), '-p', String(resolvedServer.port), '-t', auth.joinToken];
+    const connection = resolveServerConnection(serverStatus.value, props.server.apiUrl);
+    const gameArgs = ['-h', normalizeServerAddress(connection.host), '-p', String(connection.port), '-t', auth.joinToken];
     const serverHash = await hashStringSHA256(props.server.apiUrl);
     for (const [bundleId, bundle] of Object.entries(bundles.value || {})) {
       let bundleDir;

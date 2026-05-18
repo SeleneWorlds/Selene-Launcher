@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { Server } from '../types';
+import type { JoinableServer } from '../types';
 
 const props = defineProps<{
-  server: Server;
+  server: JoinableServer;
 }>();
 
 const emit = defineEmits(['join']);
@@ -16,8 +16,7 @@ function joinQueue() {
   <UCard class="mx-auto my-4 max-w-md">
     <div class="flex items-center gap-4 px-4 py-3">
       <div class="flex-1 min-w-0">
-        <h3 class="text-lg font-semibold truncate">{{ server.name }}</h3>
-        <p class="text-sm text-gray-500 truncate">{{ server.description }}</p>
+        <h3 class="text-lg font-semibold truncate">{{ server.name || "Local Server" }}</h3>
       </div>
       <UButton
         size="md"
