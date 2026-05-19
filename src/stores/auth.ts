@@ -16,6 +16,8 @@ async function readResponseDetails(response: Response) {
 }
 
 export const useAuthStore = defineStore("auth", () => {
+  const ACCESS_TOKEN_REFRESH_SKEW_MS = 30_000;
+
   const session = reactive<{
     state: string
     codeVerifier: string
@@ -47,14 +49,14 @@ export const useAuthStore = defineStore("auth", () => {
     const persistentStore = await load("auth.json", { autoSave: false, defaults: {} });
     session.accessToken = await persistentStore.get<string>(
       "accessToken"
-    );
+    ) || "";
     session.refreshToken = await persistentStore.get<string>(
       "refreshToken"
-    );
+    ) || "";
     session.accessTokenExpiresAt = await persistentStore.get<number>(
       "accessTokenExpiresAt"
-    );
-    session.refreshTokenExpiresAt = await persistentStore.get<number>("refreshTokenExpiresAt");
+    ) || 0;
+    session.refreshTokenExpiresAt = await persistentStore.get<number>("refreshTokenExpiresAt") || 0;
   }
 
   async function saveDeviceAuthTokens(data: any) {
@@ -110,7 +112,7 @@ export const useAuthStore = defineStore("auth", () => {
         "refresh_expires_in" in tokens.data &&
         typeof tokens.data.refresh_expires_in === "number"
       ) {
-        session.refreshTokenExpiresAt = tokens.data.refresh_expires_in;
+        session.refreshTokenExpiresAt = Date.now() + (tokens.data.refresh_expires_in * 1000);
       }
 
       await saveState();
@@ -131,7 +133,53 @@ export const useAuthStore = defineStore("auth", () => {
     }
   }
 
-  async function accessToken() {
+  async function refreshLauncherAccessToken() {
+    try {
+      const tokens = await keycloak.refreshAccessToken(session.refreshToken!);
+      session.accessToken = tokens.accessToken();
+      session.accessTokenExpiresAt = tokens.accessTokenExpiresAt().getTime();
+      session.refreshToken = tokens.refreshToken();
+      if (
+        "refresh_expires_in" in tokens.data &&
+        typeof tokens.data.refresh_expires_in === "number"
+      ) {
+        session.refreshTokenExpiresAt = Date.now() + (tokens.data.refresh_expires_in * 1000);
+      }
+      await saveState();
+    } catch (e) {
+      logError("[AuthStore] Failed to refresh access token", {
+        accessTokenExpiresAt: session.accessTokenExpiresAt,
+        refreshTokenExpiresAt: session.refreshTokenExpiresAt,
+        cause: e,
+      });
+      signOut();
+      if (e instanceof arctic.OAuth2RequestError) {
+        throw new UnauthorizedError("Refresh token rejected by identity provider", {
+          cause: e,
+          context: {
+            step: "refreshAccessToken",
+            oauthErrorCode: e.code,
+          },
+        });
+      } else if (e instanceof arctic.ArcticFetchError) {
+        throw new UnauthorizedError("Unable to reach identity provider while refreshing session", {
+          cause: e,
+          context: {
+            step: "refreshAccessToken",
+          },
+        });
+      } else {
+        throw new UnauthorizedError("Unexpected error while refreshing session", {
+          cause: e,
+          context: {
+            step: "refreshAccessToken",
+          },
+        });
+      }
+    }
+  }
+
+  async function accessToken(forceRefresh = false) {
     if (session.accessToken === "") {
       throw new UnauthorizedError("No launcher access token available", {
         context: {
@@ -141,7 +189,11 @@ export const useAuthStore = defineStore("auth", () => {
     }
 
     const now = Date.now();
-    if (session.accessTokenExpiresAt && session.accessTokenExpiresAt < now) {
+    const accessTokenNeedsRefresh =
+      !session.accessTokenExpiresAt ||
+      session.accessTokenExpiresAt - ACCESS_TOKEN_REFRESH_SKEW_MS <= now;
+
+    if (forceRefresh || accessTokenNeedsRefresh) {
       if (!session.refreshToken) {
         logError("[AuthStore] Access token expired and no refresh token is available", {
           accessTokenExpiresAt: session.accessTokenExpiresAt,
@@ -172,50 +224,7 @@ export const useAuthStore = defineStore("auth", () => {
         });
       }
 
-      try {
-        const tokens = await keycloak.refreshAccessToken(session.refreshToken);
-        session.accessToken = tokens.accessToken();
-        session.accessTokenExpiresAt = tokens.accessTokenExpiresAt().getTime();
-        session.refreshToken = tokens.refreshToken();
-        if (
-          "refresh_expires_in" in tokens.data &&
-          typeof tokens.data.refresh_expires_in === "number"
-        ) {
-          session.refreshTokenExpiresAt = Date.now() + (tokens.data.refresh_expires_in * 1000);
-        }
-      } catch (e) {
-        logError("[AuthStore] Failed to refresh access token", {
-          accessTokenExpiresAt: session.accessTokenExpiresAt,
-          refreshTokenExpiresAt: session.refreshTokenExpiresAt,
-          cause: e,
-        });
-        signOut();
-        if (e instanceof arctic.OAuth2RequestError) {
-          throw new UnauthorizedError("Refresh token rejected by identity provider", {
-            cause: e,
-            context: {
-              step: "refreshAccessToken",
-              oauthErrorCode: e.code,
-            },
-          });
-        } else if (e instanceof arctic.ArcticFetchError) {
-          throw new UnauthorizedError("Unable to reach identity provider while refreshing session", {
-            cause: e,
-            context: {
-              step: "refreshAccessToken",
-            },
-          });
-        } else {
-          throw new UnauthorizedError("Unexpected error while refreshing session", {
-            cause: e,
-            context: {
-              step: "refreshAccessToken",
-            },
-          });
-        }
-      }
-      
-      await saveState();
+      await refreshLauncherAccessToken();
     }
 
     return session.accessToken;
@@ -228,8 +237,8 @@ export const useAuthStore = defineStore("auth", () => {
       return cachedToken.token;
     }
 
-    const launcherAccessToken = await accessToken();
-    const response = await tauriFetch(`${launcherConfig.authBrokerUrl}/token/exchange`, {
+    let launcherAccessToken = await accessToken();
+    let response = await tauriFetch(`${launcherConfig.authBrokerUrl}/token/exchange`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${launcherAccessToken}`,
@@ -241,7 +250,26 @@ export const useAuthStore = defineStore("auth", () => {
     });
     if (response.status === 401) {
       const responseBody = await readResponseDetails(response);
-      logError("[AuthStore] Broker token exchange returned 401", {
+      logInfo("[AuthStore] Broker token exchange returned 401, retrying after refresh", {
+        serverId,
+        authBrokerUrl: launcherConfig.authBrokerUrl,
+        responseBody,
+      });
+      launcherAccessToken = await accessToken(true);
+      response = await tauriFetch(`${launcherConfig.authBrokerUrl}/token/exchange`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${launcherAccessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          server_id: serverId,
+        }),
+      });
+    }
+    if (response.status === 401) {
+      const responseBody = await readResponseDetails(response);
+      logError("[AuthStore] Broker token exchange still returned 401 after refresh", {
         serverId,
         authBrokerUrl: launcherConfig.authBrokerUrl,
         responseBody,
