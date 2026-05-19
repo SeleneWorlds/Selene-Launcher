@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import AppHeader from "./components/AppHeader.vue";
+import { computed } from "vue";
+import DedicatedLayout from "./layouts/DedicatedLayout.vue";
+import GenericLayout from "./layouts/GenericLayout.vue";
+import { isDedicatedLauncher } from "./launcherConfig";
+
+const layout = computed(() => (isDedicatedLauncher ? DedicatedLayout : GenericLayout));
 </script>
 
 <template>
   <UApp>
-    <AppHeader />
-    <RouterView />
+    <component :is="layout" />
   </UApp>
 </template>

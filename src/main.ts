@@ -7,14 +7,15 @@ import ui from "@nuxt/ui/vue-plugin";
 import { onOpenUrl } from "@tauri-apps/plugin-deep-link";
 
 import App from "./App.vue";
+import DedicatedHomeView from "./views/DedicatedHomeView.vue";
 import HomeView from "./views/HomeView.vue";
 import BrowseView from "./views/BrowseView.vue";
 import { useAuthStore } from "./stores/auth";
-import { isGenericLauncher, launcherConfig } from "./launcherConfig";
+import { isDedicatedLauncher, isGenericLauncher, launcherConfig } from "./launcherConfig";
 import { initTauriLogging, logError, logInfo } from "./logger";
 
 const routes: RouteRecordRaw[] = [
-  { path: "/", component: HomeView },
+  { path: "/", component: isDedicatedLauncher ? DedicatedHomeView : HomeView },
 ];
 
 if (isGenericLauncher) {
