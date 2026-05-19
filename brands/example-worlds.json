@@ -6,7 +6,7 @@
   "communityLabel": "Discord",
   "communityUrl": "https://discord.gg/S7maQVRRa9",
   "dedicated": {
-    "tauriIconDir": "icons/example-worlds",
+    "tauriIconDir": "icons",
     "tagline": "Your gateway into the live world.",
     "server": {
       "name": "Example Server",
@@ -17,9 +17,19 @@
     },
     "updates": [
       {
-        "label": "Hello World",
-        "title": "Launch this week",
-        "body": "Preview the new region and create your character."
+        "title": "Summer Solstice",
+        "body": "A twilight gathering to honor the sun’s peak power. Join us for a flower crown workshop, meditation, and communal potluck.",
+        "label": "Upcoming Events"
+      },
+      {
+        "title": "Apples are now BANNED!",
+        "body": "Following last week's vote, apples are now officially banned and will be removed from your inventory the next time you log in.",
+        "label": "Community Updates"
+      },
+      {
+        "title": "Patch 12.0.23",
+        "body": "Stopped cats from dying of alcohol poisoning after walking over damp tavern floors and cleaning themselves.",
+        "label": "Technical Updates"
       }
     ]
   }

@@ -2,31 +2,34 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { invoke } from "@tauri-apps/api/core";
 import { load } from '@tauri-apps/plugin-store';
-import type { JoinableServer } from '../types';
-
-export type ReleaseChannel = 'stable' | 'experimental';
+import {
+  joinableServerSchema,
+  releaseChannelSchema,
+  type JoinableServerSchema,
+  type ReleaseChannel,
+} from '../schemas';
 
 const SETTINGS_FILE = 'settings.json';
 
 export const useSettingsStore = defineStore('settings', () => {
   const releaseChannel = ref<ReleaseChannel>('stable');
   const jrePath = ref<string>('');
-  const lastJoinedServer = ref<JoinableServer | null>(null);
+  const lastJoinedServer = ref<JoinableServerSchema | null>(null);
 
   async function loadSettings() {
     const persistentStore = await load(SETTINGS_FILE, { autoSave: false, defaults: {} });
-    const storedReleaseChannel = await persistentStore.get<ReleaseChannel>('releaseChannel');
-    if (storedReleaseChannel === 'stable' || storedReleaseChannel === 'experimental') {
-      releaseChannel.value = storedReleaseChannel;
+    const storedReleaseChannel = releaseChannelSchema.safeParse(await persistentStore.get('releaseChannel'));
+    if (storedReleaseChannel.success) {
+      releaseChannel.value = storedReleaseChannel.data;
     }
-    const storedJrePath = await persistentStore.get<string>('jrePath');
+    const storedJrePath = await persistentStore.get('jrePath');
     if (typeof storedJrePath === 'string') {
       jrePath.value = storedJrePath;
     }
 
-    const storedLastJoined = await persistentStore.get<JoinableServer>('lastJoinedServer');
-    if (storedLastJoined && typeof storedLastJoined === 'object') {
-      lastJoinedServer.value = storedLastJoined as JoinableServer;
+    const storedLastJoined = joinableServerSchema.safeParse(await persistentStore.get('lastJoinedServer'));
+    if (storedLastJoined.success) {
+      lastJoinedServer.value = storedLastJoined.data;
     }
 
     if (!jrePath.value) {
@@ -43,7 +46,7 @@ export const useSettingsStore = defineStore('settings', () => {
     await persistentStore.save();
   }
 
-  async function setLastJoinedServer(server: JoinableServer | null) {
+  async function setLastJoinedServer(server: JoinableServerSchema | null) {
     lastJoinedServer.value = server;
     await saveSettings();
   }

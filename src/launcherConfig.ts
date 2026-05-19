@@ -1,27 +1,7 @@
 import type { DedicatedServer, DedicatedUpdateCard } from "./types";
+import { launcherBrandSchema } from "./schemas";
 
 export type LauncherMode = "generic" | "dedicated";
-
-type LauncherBrand = {
-  mode: LauncherMode;
-  appName: string;
-  windowTitle: string;
-  productName: string;
-  homeLabel: string;
-  communityLabel: string;
-  communityUrl: string;
-  authBrokerUrl: string;
-  discovery: {
-    featuredUrl: string;
-    serversUrl: string;
-  };
-  dedicated: {
-    server: DedicatedServer;
-    tagline: string | null;
-    updates: DedicatedUpdateCard[];
-    tauriIconDir: string | null;
-  } | null;
-};
 
 export type LauncherConfig = {
   mode: LauncherMode;
@@ -41,7 +21,7 @@ export type LauncherConfig = {
   dedicatedUpdates: DedicatedUpdateCard[];
 };
 
-const brand = __LAUNCHER_BRAND__ as LauncherBrand;
+const brand = launcherBrandSchema.parse(__LAUNCHER_BRAND__);
 
 export const launcherConfig: LauncherConfig = Object.freeze({
   mode: brand.mode,

@@ -13,6 +13,7 @@ import BrowseView from "./views/BrowseView.vue";
 import { useAuthStore } from "./stores/auth";
 import { isDedicatedLauncher, isGenericLauncher, launcherConfig } from "./launcherConfig";
 import { initTauriLogging, logError, logInfo } from "./logger";
+import { deepLinkAuthQuerySchema } from "./schemas";
 
 const routes: RouteRecordRaw[] = [
   { path: "/", component: isDedicatedLauncher ? DedicatedHomeView : HomeView },
@@ -42,10 +43,12 @@ onOpenUrl(async ([url]) => {
   const path = parsedUrl.host;
   if (path === "auth") {
     logInfo("[Auth] Handling auth deep link", { path });
-    const state = parsedUrl.searchParams.get("state");
-    const code = parsedUrl.searchParams.get("code");
-    if (code && state) {
-      useAuthStore().validateAuthorizationCode(code, state);
+    const parsedAuthQuery = deepLinkAuthQuerySchema.safeParse({
+      state: parsedUrl.searchParams.get("state"),
+      code: parsedUrl.searchParams.get("code"),
+    });
+    if (parsedAuthQuery.success) {
+      useAuthStore().validateAuthorizationCode(parsedAuthQuery.data.code, parsedAuthQuery.data.state);
     } else {
       logError("[Auth] Missing code or state in deep link", { url });
     }

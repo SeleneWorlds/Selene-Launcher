@@ -3,6 +3,12 @@ import { ref } from "vue";
 import { useAuthStore } from "../stores/auth";
 import { writeText as copyToClipboard } from "@tauri-apps/plugin-clipboard-manager";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import {
+  deviceAuthPollErrorSchema,
+  deviceAuthPollPendingSchema,
+  deviceAuthStartResponseSchema,
+  deviceAuthTokensSchema,
+} from "../schemas";
 
 const visible = ref(false);
 defineExpose({
@@ -45,7 +51,7 @@ async function startDeviceAuth() {
       }
     );
     if (!resp.ok) throw new Error("Failed to fetch device code");
-    const data = await resp.json();
+    const data = deviceAuthStartResponseSchema.parse(await resp.json());
     userCode.value = data.user_code;
     verificationUriComplete.value = data.verification_uri_complete;
     pollForToken(data.device_code, data.interval || 5);
@@ -72,16 +78,20 @@ async function pollForToken(deviceCode: string, interval: number) {
         }
       );
       const data = await resp.json();
-      if (resp.ok && data.access_token) {
-        await authStore.saveDeviceAuthTokens(data);
+      const parsedTokens = deviceAuthTokensSchema.safeParse(data);
+      if (resp.ok && parsedTokens.success) {
+        await authStore.saveDeviceAuthTokens(parsedTokens.data);
         polling.value = false;
         visible.value = false;
         return;
-      } else if (data.error === "authorization_pending") {
+      }
+      const pending = deviceAuthPollPendingSchema.safeParse(data);
+      if (pending.success) {
         pollTimer = window.setTimeout(poll, interval * 1000);
       } else {
+        const parsedError = deviceAuthPollErrorSchema.safeParse(data);
         pollError.value =
-          data.error_description || data.error || "Unknown error";
+          parsedError.success ? (parsedError.data.error_description || parsedError.data.error) : "Unknown error";
         polling.value = false;
       }
     } catch (e: any) {

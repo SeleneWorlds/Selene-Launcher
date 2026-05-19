@@ -3,16 +3,16 @@ import { computed, onMounted, ref } from "vue";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import QueueModal from "../components/QueueModal.vue";
 import { useSettingsStore } from "../stores/settings";
-import type { JoinableServer, ServerStatus } from "../types";
 import { launcherConfig } from "../launcherConfig";
+import { serverStatusSchema, type JoinableServerSchema, type ServerStatusSchema } from "../schemas";
 
 const settings = useSettingsStore();
 const dedicatedServer = launcherConfig.dedicatedServer;
-const dedicatedServerStatus = ref<ServerStatus | null>(null);
-const selectedServer = ref<JoinableServer | null>(null);
+const dedicatedServerStatus = ref<ServerStatusSchema | null>(null);
+const selectedServer = ref<JoinableServerSchema | null>(null);
 const showQueueModal = ref(false);
 
-function onJoin(server: JoinableServer) {
+function onJoin(server: JoinableServerSchema) {
   selectedServer.value = server;
   showQueueModal.value = true;
 }
@@ -34,7 +34,7 @@ async function fetchDedicatedServerStatus() {
       dedicatedServerStatus.value = null;
       return;
     }
-    dedicatedServerStatus.value = await res.json() as ServerStatus;
+    dedicatedServerStatus.value = serverStatusSchema.parse(await res.json());
   } catch {
     dedicatedServerStatus.value = null;
   }

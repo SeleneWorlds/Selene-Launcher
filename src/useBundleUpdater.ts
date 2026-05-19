@@ -11,6 +11,7 @@ import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import { invoke } from "@tauri-apps/api/core";
 import * as path from "@tauri-apps/api/path";
 import { useAuthStore } from "./stores/auth";
+import { bundlesResponseSchema } from "./schemas";
 
 export function useBundleUpdater() {
   const auth = useAuthStore();
@@ -58,14 +59,7 @@ export function useBundleUpdater() {
       },
     });
     if (!resp.ok) return;
-    const bundles = await resp.json() as {
-      [key: string]: {
-        name: string;
-        hash: string;
-        variants: string[];
-        allow_shared_cache?: boolean;
-      };
-    };
+    const bundles = bundlesResponseSchema.parse(await resp.json());
     console.log(bundles)
     const localHashes = await getLocalBundleHashes(serverUrl);
     const needUpdate: Array<{

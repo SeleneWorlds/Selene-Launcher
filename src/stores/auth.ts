@@ -6,6 +6,12 @@ import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import { UnauthorizedError } from "../errors";
 import { launcherConfig } from "../launcherConfig";
 import { logError, logInfo } from "../logger";
+import {
+  authSessionStateSchema,
+  brokerTokenResponseSchema,
+  deviceAuthTokensSchema,
+  type DeviceAuthTokens,
+} from "../schemas";
 
 async function readResponseDetails(response: Response) {
   try {
@@ -47,19 +53,23 @@ export const useAuthStore = defineStore("auth", () => {
 
   async function loadState() {
     const persistentStore = await load("auth.json", { autoSave: false, defaults: {} });
-    session.accessToken = await persistentStore.get<string>(
-      "accessToken"
-    ) || "";
-    session.refreshToken = await persistentStore.get<string>(
-      "refreshToken"
-    ) || "";
-    session.accessTokenExpiresAt = await persistentStore.get<number>(
-      "accessTokenExpiresAt"
-    ) || 0;
-    session.refreshTokenExpiresAt = await persistentStore.get<number>("refreshTokenExpiresAt") || 0;
+    const persistedState = authSessionStateSchema.safeParse({
+      accessToken: await persistentStore.get("accessToken"),
+      refreshToken: await persistentStore.get("refreshToken"),
+      accessTokenExpiresAt: await persistentStore.get("accessTokenExpiresAt"),
+      refreshTokenExpiresAt: await persistentStore.get("refreshTokenExpiresAt"),
+    });
+    if (!persistedState.success) {
+      return;
+    }
+    session.accessToken = persistedState.data.accessToken;
+    session.refreshToken = persistedState.data.refreshToken;
+    session.accessTokenExpiresAt = persistedState.data.accessTokenExpiresAt;
+    session.refreshTokenExpiresAt = persistedState.data.refreshTokenExpiresAt;
   }
 
-  async function saveDeviceAuthTokens(data: any) {
+  async function saveDeviceAuthTokens(rawData: DeviceAuthTokens) {
+    const data = deviceAuthTokensSchema.parse(rawData);
     session.accessToken = data.access_token;
     session.accessTokenExpiresAt = Date.now() + (data.expires_in * 1000);
     session.refreshToken = data.refresh_token;
@@ -294,11 +304,7 @@ export const useAuthStore = defineStore("auth", () => {
       throw new Error(`Failed to exchange broker token: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json() as {
-      token: string;
-      expires_at: string;
-      token_type: string;
-    };
+    const data = brokerTokenResponseSchema.parse(await response.json());
     brokerTokens[serverId] = {
       token: data.token,
       expiresAt: new Date(data.expires_at).getTime(),

@@ -16,11 +16,19 @@ import { ensureGlobalClientBundlesDir } from "../globalBundlesUtil";
 import { readDir } from "@tauri-apps/plugin-fs";
 import { UnauthorizedError } from "../errors";
 import { logError, logInfo, logWarn } from "../logger";
+import {
+  bundleEntrySchema,
+  queueStatusSchema,
+  serverStatusSchema,
+  type JoinableServerSchema,
+  type QueueStatusSchema,
+  type ServerStatusSchema,
+} from "../schemas";
 
 import DownloadGameModal from "./DownloadGameModal.vue";
 import DownloadJreModal from "./DownloadJreModal.vue";
 import DeviceLoginModal from "./DeviceLoginModal.vue";
-import type { JoinableServer, ServerStatus } from "../types";
+import { z } from "zod";
 
 const auth = useAuthStore();
 
@@ -78,17 +86,13 @@ function handleError(err: unknown): void {
   pollingActive.value = false;
 }
 const props = defineProps<{
-  server: JoinableServer | null;
+  server: JoinableServerSchema | null;
 }>();
 
 const modelValue = defineModel<boolean>();
 
-const queueStatus = ref<{
-  status: string;
-  message: string;
-  token?: string;
-} | null>(null);
-const serverStatus = ref<ServerStatus | null>(null);
+const queueStatus = ref<QueueStatusSchema | null>(null);
+const serverStatus = ref<ServerStatusSchema | null>(null);
 const pollingActive = ref(false);
 const errorMessage = ref<string | null>(null);
 
@@ -103,23 +107,10 @@ const showDownloadModal = ref(false);
 const jreDownloadModal = useTemplateRef('jreDownloadModal');
 const loginModal = useTemplateRef('loginModal');
 
-const bundles = ref<{
-  [key: string]: {
-    name: string;
-    hash: string;
-    variants: string[];
-    allow_shared_cache?: boolean;
-  };
-}>();
-const bundlesToUpdate = ref<
-  Array<{
-    id: string;
-    name: string;
-    hash: string;
-    variants: string[];
-    allow_shared_cache?: boolean;
-  }>
->([]);
+type BundleEntry = z.infer<typeof bundleEntrySchema>;
+
+const bundles = ref<Record<string, BundleEntry>>();
+const bundlesToUpdate = ref<Array<BundleEntry & { id: string }>>([]);
 const bundleDownloadProgress = ref<string | null>(null);
 const showBundlePrompt = ref(false);
 
@@ -135,7 +126,7 @@ function normalizeServerAddress(address: string): string {
 }
 
 function resolveServerConnection(
-  status: Pick<ServerStatus, "host" | "port"> | null,
+  status: Pick<ServerStatusSchema, "host" | "port"> | null,
   apiUrl: string,
 ): { host: string; port: number } {
   const url = new URL(apiUrl);
@@ -169,7 +160,7 @@ async function attemptJoin() {
         });
         throw new Error(`Failed to load server status: ${statusResponse.status} ${statusResponse.statusText}`);
       }
-      serverStatus.value = await statusResponse.json() as ServerStatus;
+      serverStatus.value = serverStatusSchema.parse(await statusResponse.json());
     }
     const resolvedServer = serverStatus.value;
     if (!resolvedServer.id) throw new Error("Resolved server status is missing an ID");
@@ -214,7 +205,7 @@ async function attemptJoin() {
       pollingActive.value = false;
       return;
     }
-    queueStatus.value = await res.json();
+    queueStatus.value = queueStatusSchema.parse(await res.json());
     if (queueStatus.value) {
       if (queueStatus.value.status === "Rejected") {
         logWarn("[QueueModal] Queue status rejected", {

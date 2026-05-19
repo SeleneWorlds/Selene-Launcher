@@ -1,13 +1,18 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
-import type { FeaturedServer, ListedServer } from '../types';
 import { isDedicatedLauncher, launcherConfig } from '../launcherConfig';
+import {
+  featuredServerSchema,
+  serversResponseSchema,
+  type FeaturedServerSchema,
+  type ListedServerSchema,
+} from '../schemas';
 
 
 export const useServersStore = defineStore('servers', () => {
-  const featured = ref<FeaturedServer | null>(null);
-  const servers = ref<ListedServer[]>([]);
+  const featured = ref<FeaturedServerSchema | null>(null);
+  const servers = ref<ListedServerSchema[]>([]);
   const loadingFeatured = ref(false);
   const loadingServers = ref(false);
   const errorFeatured = ref<string | null>(null);
@@ -30,7 +35,7 @@ export const useServersStore = defineStore('servers', () => {
         featured.value = null;
         return;
       }
-      featured.value = await res.json() as FeaturedServer;
+      featured.value = featuredServerSchema.parse(await res.json());
     } catch (e: any) {
       errorFeatured.value = String(e?.message || e);
       featured.value = null;
@@ -56,7 +61,7 @@ export const useServersStore = defineStore('servers', () => {
         servers.value = [];
         return;
       }
-      servers.value = (await res.json()).servers as ListedServer[];
+      servers.value = serversResponseSchema.parse(await res.json()).servers;
     } catch (e: any) {
       errorServers.value = String(e?.message || e);
       servers.value = [];
