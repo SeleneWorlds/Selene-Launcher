@@ -1,9 +1,13 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import ui from '@nuxt/ui/vite'
+import { fileURLToPath } from "node:url";
+import { loadLauncherBrand } from "./scripts/launcherBrand.mjs";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
+const rootDir = fileURLToPath(new URL(".", import.meta.url));
+const { brand } = loadLauncherBrand(rootDir, process.argv.slice(2));
 
 // https://vitejs.dev/config/
 export default defineConfig(async () => ({
@@ -20,6 +24,9 @@ export default defineConfig(async () => ({
       }
     }
   })],
+  define: {
+    __LAUNCHER_BRAND__: JSON.stringify(brand),
+  },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //

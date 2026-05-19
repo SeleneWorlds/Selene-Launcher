@@ -1,30 +1,35 @@
 /// <reference types="vite/client" />
 
-interface ImportMetaEnv {
-  readonly VITE_LAUNCHER_MODE?: "generic" | "dedicated";
-  readonly VITE_LAUNCHER_NAME?: string;
-  readonly VITE_WINDOW_TITLE?: string;
-  readonly VITE_HOME_LABEL?: string;
-  readonly VITE_COMMUNITY_LABEL?: string;
-  readonly VITE_COMMUNITY_URL?: string;
-  readonly VITE_AUTH_BROKER_URL?: string;
-  readonly VITE_DISCOVERY_FEATURED_URL?: string;
-  readonly VITE_DISCOVERY_SERVERS_URL?: string;
-  readonly VITE_TAURI_PRODUCT_NAME?: string;
-  readonly VITE_DEDICATED_TAURI_ICON_DIR?: string;
-  readonly VITE_DEDICATED_SERVER_ID?: string;
-  readonly VITE_DEDICATED_SERVER_NAME?: string;
-  readonly VITE_DEDICATED_SERVER_ADDRESS?: string;
-  readonly VITE_DEDICATED_SERVER_PORT?: string;
-  readonly VITE_DEDICATED_SERVER_API_URL?: string;
-  readonly VITE_DEDICATED_SERVER_DESCRIPTION?: string;
-  readonly VITE_DEDICATED_TAGLINE?: string;
-  readonly VITE_DEDICATED_UPDATES_JSON?: string;
-}
-
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
-}
+declare const __LAUNCHER_BRAND__: {
+  mode: "generic" | "dedicated";
+  appName: string;
+  windowTitle: string;
+  productName: string;
+  homeLabel: string;
+  communityLabel: string;
+  communityUrl: string;
+  authBrokerUrl: string;
+  discovery: {
+    featuredUrl: string;
+    serversUrl: string;
+  };
+  dedicated: {
+    server: {
+      name: string;
+      description: string;
+      address: string;
+      port: number;
+      apiUrl: string;
+    };
+    tagline: string | null;
+    updates: Array<{
+      title: string;
+      body: string;
+      label?: string;
+    }>;
+    tauriIconDir: string | null;
+  } | null;
+};
 
 declare module "*.vue" {
   import type { DefineComponent } from "vue";

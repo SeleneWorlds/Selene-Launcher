@@ -1,0 +1,26 @@
+{
+  "mode": "dedicated",
+  "appName": "Example Worlds",
+  "windowTitle": "Example Worlds Launcher",
+  "productName": "Example Worlds Launcher",
+  "communityLabel": "Discord",
+  "communityUrl": "https://discord.gg/S7maQVRRa9",
+  "dedicated": {
+    "tauriIconDir": "icons/example-worlds",
+    "tagline": "Your gateway into the live world.",
+    "server": {
+      "name": "Example Server",
+      "address": "play.example.com",
+      "port": 8147,
+      "apiUrl": "https://play.example.com/api",
+      "description": "Jump straight into the main world."
+    },
+    "updates": [
+      {
+        "label": "Hello World",
+        "title": "Launch this week",
+        "body": "Preview the new region and create your character."
+      }
+    ]
+  }
+}

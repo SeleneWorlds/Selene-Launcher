@@ -11,34 +11,63 @@ The launcher supports two build-time modes:
 - `generic`: the default Selene launcher with home plus server browser
 - `dedicated`: a branded single-server launcher with a focused main screen
 
-Configure the build through Vite env variables in `.env` or your shell:
+Generic builds use the built-in defaults:
 
 ```bash
-VITE_LAUNCHER_MODE=generic
-VITE_LAUNCHER_NAME=Selene
-VITE_WINDOW_TITLE=Selene
-VITE_COMMUNITY_LABEL=Discord
-VITE_COMMUNITY_URL=https://discord.gg/S7maQVRRa9
+pnpm tauri dev
 ```
 
-Dedicated builds also require a fixed server:
+Dedicated builds are configured through a brand JSON file passed at build time:
 
 ```bash
-VITE_LAUNCHER_MODE=dedicated
-VITE_LAUNCHER_NAME=Example Worlds
-VITE_WINDOW_TITLE=Example Worlds Launcher
-VITE_TAURI_PRODUCT_NAME=Example Worlds Launcher
-VITE_DEDICATED_TAURI_ICON_DIR=icons/example-worlds
-VITE_DEDICATED_SERVER_NAME=Example Server
-VITE_DEDICATED_SERVER_ADDRESS=play.example.com
-VITE_DEDICATED_SERVER_PORT=8147
-VITE_DEDICATED_SERVER_API_URL=https://play.example.com/api
-VITE_DEDICATED_SERVER_DESCRIPTION=Jump straight into the main world.
-VITE_DEDICATED_TAGLINE=Your gateway into the live world.
-VITE_DEDICATED_UPDATES_JSON=[{"label":"Hello World","title":"Launch this week","body":"Preview the new region and create your character."}]
+pnpm tauri dev -- --brand ./brands/example-worlds.json
 ```
 
-The `pnpm tauri ...` wrapper generates a temporary Tauri config so product name, window title, and dedicated-mode bundle icons follow the same launcher settings.
+The same flag works for plain Vite builds:
+
+```bash
+pnpm build -- --brand ./brands/example-worlds.json
+```
+
+The `pnpm tauri ...` wrapper generates a temporary Tauri config so product name, window title, dedicated-mode bundle icons, and the nested `pnpm dev`/`pnpm build` calls all use the same brand file.
+
+Brand file shape:
+
+```json
+{
+  "mode": "dedicated",
+  "appName": "Example Worlds",
+  "windowTitle": "Example Worlds Launcher",
+  "productName": "Example Worlds Launcher",
+  "communityLabel": "Discord",
+  "communityUrl": "https://discord.gg/S7maQVRRa9",
+  "authBrokerUrl": "https://auth-broker.seleneworlds.com",
+  "discovery": {
+    "featuredUrl": "https://telescope.seleneworlds.com/featured",
+    "serversUrl": "https://telescope.seleneworlds.com/servers"
+  },
+  "dedicated": {
+    "tauriIconDir": "icons/example-worlds",
+    "tagline": "Your gateway into the live world.",
+    "server": {
+      "name": "Example Server",
+      "address": "play.example.com",
+      "port": 8147,
+      "apiUrl": "https://play.example.com/api",
+      "description": "Jump straight into the main world."
+    },
+    "updates": [
+      {
+        "label": "Hello World",
+        "title": "Launch this week",
+        "body": "Preview the new region and create your character."
+      }
+    ]
+  }
+}
+```
+
+If `mode` is omitted it defaults to `generic`. For dedicated builds, `dedicated.server` is required. If `dedicated.updates` is omitted, the launcher falls back to the built-in sample cards.
 
 ## Getting Started
 
@@ -55,7 +84,7 @@ Icons for Tauri can be generated from the source SVG. This step must be done whe
 pnpm tauri icon ./src/assets/selene.svg
 ```
 
-For dedicated launches, you can generate a separate icon set into a subdirectory under `src-tauri` and point `VITE_DEDICATED_TAURI_ICON_DIR` at it. Any files present in that directory override the default Selene assets; missing files fall back to `src-tauri/icons`. A complete dedicated set can include:
+For dedicated launches, you can generate a separate icon set into a subdirectory under `src-tauri` and point `dedicated.tauriIconDir` at it. Any files present in that directory override the default Selene assets; missing files fall back to `src-tauri/icons`. A complete dedicated set can include:
 
 - `32x32.png`
 - `64x64.png`
