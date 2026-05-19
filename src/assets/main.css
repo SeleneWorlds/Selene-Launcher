@@ -2,5 +2,121 @@
 @import "@nuxt/ui";
 
 :root {
-    --ui-radius: 0;
+  --ui-radius: 0;
+  --launcher-foreground: #f5f7fb;
+  --launcher-accent: #f38f38;
+  --launcher-accent-soft: #f7c27e;
+  --launcher-panel: rgba(8, 16, 30, 0.78);
+  --launcher-panel-strong: rgba(7, 13, 24, 0.9);
+  --launcher-border: rgba(255, 255, 255, 0.12);
+  --launcher-shadow: 0 30px 80px rgba(3, 8, 18, 0.45);
+}
+
+body {
+  min-height: 100vh;
+  font-family: "Avenir Next", "Segoe UI", "Trebuchet MS", sans-serif;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+.dedicated-shell {
+  position: relative;
+  overflow: hidden;
+  background-color: #050910;
+  background-image:
+    linear-gradient(180deg, rgba(4, 8, 16, 0.18), rgba(4, 8, 16, 0.72)),
+    url("./background.png");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.dedicated-shell__backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.05), transparent 24%),
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.04) 0, transparent 54%),
+    linear-gradient(90deg, rgba(4, 8, 16, 0.3), rgba(4, 8, 16, 0.08) 30%, rgba(4, 8, 16, 0.08) 70%, rgba(4, 8, 16, 0.3));
+}
+
+.dedicated-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid var(--launcher-border);
+  background: rgba(6, 12, 23, 0.62);
+  box-shadow: var(--launcher-shadow);
+  backdrop-filter: blur(16px);
+  padding: 0.9rem 1.1rem;
+}
+
+.panel-surface {
+  border: 1px solid var(--launcher-border);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+    var(--launcher-panel);
+  box-shadow: var(--launcher-shadow);
+  backdrop-filter: blur(14px);
+  padding: 1.5rem;
+}
+
+.launcher-hero {
+  position: relative;
+  background:
+    linear-gradient(130deg, rgba(243, 143, 56, 0.14), transparent 28%),
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.08), transparent 40%),
+    var(--launcher-panel-strong);
+}
+
+.launcher-hero::after {
+  content: "";
+  position: absolute;
+  inset: auto -10% -20% auto;
+  width: min(28rem, 52vw);
+  aspect-ratio: 1;
+  background: radial-gradient(circle, rgba(243, 143, 56, 0.18) 0, transparent 64%);
+  pointer-events: none;
+}
+
+.launcher-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.45rem 0.8rem;
+  font-size: 0.69rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.launcher-pill.is-online::before,
+.launcher-pill.is-offline::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+}
+
+.launcher-pill.is-online::before {
+  background: #49d17d;
+  box-shadow: 0 0 12px rgba(73, 209, 125, 0.8);
+}
+
+.launcher-pill.is-offline::before {
+  background: #ff8a7a;
+  box-shadow: 0 0 12px rgba(255, 138, 122, 0.5);
+}
+
+@media (max-width: 640px) {
+  .panel-surface {
+    padding: 1rem;
+  }
 }

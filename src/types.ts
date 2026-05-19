@@ -38,3 +38,9 @@ export type DedicatedServer = JoinableServer & {
   address: string;
   port: number;
 };
+
+export type DedicatedUpdateCard = {
+  title: string;
+  body: string;
+  label?: string;
+};

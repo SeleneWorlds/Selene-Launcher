@@ -11,12 +11,15 @@ interface ImportMetaEnv {
   readonly VITE_DISCOVERY_FEATURED_URL?: string;
   readonly VITE_DISCOVERY_SERVERS_URL?: string;
   readonly VITE_TAURI_PRODUCT_NAME?: string;
+  readonly VITE_DEDICATED_TAURI_ICON_DIR?: string;
   readonly VITE_DEDICATED_SERVER_ID?: string;
   readonly VITE_DEDICATED_SERVER_NAME?: string;
   readonly VITE_DEDICATED_SERVER_ADDRESS?: string;
   readonly VITE_DEDICATED_SERVER_PORT?: string;
   readonly VITE_DEDICATED_SERVER_API_URL?: string;
   readonly VITE_DEDICATED_SERVER_DESCRIPTION?: string;
+  readonly VITE_DEDICATED_TAGLINE?: string;
+  readonly VITE_DEDICATED_UPDATES_JSON?: string;
 }
 
 interface ImportMeta {
