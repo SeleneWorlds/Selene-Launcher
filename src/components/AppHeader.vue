@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from "@nuxt/ui";
-import { useTemplateRef, computed, ref } from "vue";
+import { computed, ref } from "vue";
 import { useAuthStore } from "../stores/auth";
 import { isGenericLauncher, launcherConfig } from "../launcherConfig";
 
 import SeleneLogo from "./SeleneLogo.vue";
-import DeviceLoginModal from "../components/DeviceLoginModal.vue";
 import SettingsModal from "../components/SettingsModal.vue";
 
 const items = computed<NavigationMenuItem[]>(() => {
@@ -32,7 +31,6 @@ const items = computed<NavigationMenuItem[]>(() => {
 });
 
 const auth = useAuthStore();
-const loginModal = useTemplateRef('loginModal');
 const settingsModalOpen = ref(false);
 </script>
 
@@ -66,7 +64,7 @@ const settingsModalOpen = ref(false);
           <UButton
             color="neutral"
             variant="ghost"
-            @click="loginModal?.open()"
+            @click="auth.startSignIn()"
             icon="i-lucide-log-in"
             aria-label="Sign in"
           />
@@ -85,7 +83,6 @@ const settingsModalOpen = ref(false);
       </template>
     </template>
 
-    <DeviceLoginModal ref="loginModal" />
     <SettingsModal v-model="settingsModalOpen" />
   </UHeader>
 </template>

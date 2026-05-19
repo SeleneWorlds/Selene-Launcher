@@ -27,7 +27,6 @@ import {
 
 import DownloadGameModal from "./DownloadGameModal.vue";
 import DownloadJreModal from "./DownloadJreModal.vue";
-import DeviceLoginModal from "./DeviceLoginModal.vue";
 import { z } from "zod";
 
 const auth = useAuthStore();
@@ -63,7 +62,7 @@ function handleError(err: unknown): void {
       cause: err.cause,
     });
     // Start sign in flow for session expiration
-    loginModal.value?.open();
+    void auth.startSignIn();
   } else if (err instanceof UnauthorizedError) {
     errorMessage.value = err.message || "Join request was rejected by the server.";
     logJoinFlowError("Join flow rejected by server", {
@@ -105,7 +104,6 @@ const { isDownloaded } = useGameDownloader();
 
 const showDownloadModal = ref(false);
 const jreDownloadModal = useTemplateRef('jreDownloadModal');
-const loginModal = useTemplateRef('loginModal');
 
 type BundleEntry = z.infer<typeof bundleEntrySchema>;
 
@@ -172,7 +170,7 @@ async function attemptJoin() {
       if (err instanceof UnauthorizedError) {
         // Session expired, start sign in flow
         await close();
-        await loginModal.value?.open();
+        await auth.startSignIn();
         return;
       }
       throw err;
@@ -456,5 +454,4 @@ watch(
     :version="latestVersion"
   />
   <DownloadJreModal ref="jreDownloadModal" />
-  <DeviceLoginModal ref="loginModal" />
 </template>

@@ -3,6 +3,7 @@ import { reactive, computed } from "vue";
 import * as arctic from "arctic";
 import { load } from "@tauri-apps/plugin-store";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { UnauthorizedError } from "../errors";
 import { launcherConfig } from "../launcherConfig";
 import { logError, logInfo } from "../logger";
@@ -99,6 +100,15 @@ export const useAuthStore = defineStore("auth", () => {
     session.codeVerifier = codeVerifier;
     const scopes = ["openid", "offline_access"];
     return keycloak.createAuthorizationURL(state, codeVerifier, scopes);
+  }
+
+  async function startSignIn() {
+    const authorizationUrl = createAuthorizationURL();
+    logInfo("[AuthStore] Starting deeplink sign-in", {
+      redirectUri,
+      authorizationUrl: authorizationUrl.toString(),
+    });
+    await openUrl(authorizationUrl.toString());
   }
 
   async function validateAuthorizationCode(code: string, state: string) {
@@ -345,6 +355,7 @@ export const useAuthStore = defineStore("auth", () => {
     accessToken,
     brokerAccessToken,
     createAuthorizationURL,
+    startSignIn,
     validateAuthorizationCode,
     isSignedIn,
     signOut,

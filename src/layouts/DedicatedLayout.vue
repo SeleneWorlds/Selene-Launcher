@@ -1,15 +1,13 @@
 <script setup lang="ts">
-import { computed, ref, useTemplateRef } from "vue";
+import { computed, ref } from "vue";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useAuthStore } from "../stores/auth";
 import { launcherConfig } from "../launcherConfig";
 
 import SeleneLogo from "../components/SeleneLogo.vue";
-import DeviceLoginModal from "../components/DeviceLoginModal.vue";
 import SettingsModal from "../components/SettingsModal.vue";
 
 const auth = useAuthStore();
-const loginModal = useTemplateRef("loginModal");
 const settingsModalOpen = ref(false);
 
 const quickLinks = computed(() => [
@@ -56,7 +54,7 @@ const quickLinks = computed(() => [
             color="primary"
             class="font-semibold"
             icon="i-lucide-log-in"
-            @click="loginModal?.open()"
+            @click="auth.startSignIn()"
           >
             Sign In
           </UButton>
@@ -78,7 +76,6 @@ const quickLinks = computed(() => [
       </main>
     </div>
 
-    <DeviceLoginModal ref="loginModal" />
     <SettingsModal v-model="settingsModalOpen" />
   </div>
 </template>
